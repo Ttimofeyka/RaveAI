@@ -31,59 +31,60 @@ int getVocabSize(char* fname) {
 
 
 void main(int argc, char** argv) {
-	float scale = scaleWeight;
-	float wmax = maxWeight;
+    float scale = scaleWeight;
+    float wmax = maxWeight;
     std::file fpWeightsOut;
 
     int nInputNodes;
-    int nHiddenNodes;
+    int nHiddenNodes = 100;
     int nOutputNodes;
 
-    nHiddenNodes = 100;
-
-	if(argc < 2) {
-		std::println("Usage: testweights inputfile [hiddensize]");
-		std::exit(1);
-	}
-    char* inputFile = argv[1];
-    char* outputFile = "init_weights";
-    if(argc == 3) nHiddenNodes = std::string(argv[2]).toInt(); // Number of hidden nodes
-
-    vocabSize = getVocabSize(inputFile);
-    nInputNodes = vocabSize; // Number of input nodes
-    nOutputNodes = vocabSize; // Number of output nodes
-
-    fpWeightsOut = std::file(outputFile);
-    fpWeightsOut.open("w");
-
-    for(int i=0; i<nHiddenNodes; i++) {
-    	for(int j=0; j<nInputNodes+1; j++) {
-            float frand = (cast(float)std::randomShort());
-    		float w1 = wmax * (1.0f - (2f * (frand / scale)));
-            char c = ' ';
-            if(((j % items) == (items - 1)) || (j == nInputNodes)) c = '\n';
-            libc::fprintf(fpWeightsOut._file, "%9.6f%c", cast(double)w1, c);
-    	}
+    if(argc < 2) {
+        std::println("For initializing weights, use \"raveai file\"");
+        std::println("Otherwise, use \"raveai file --training\" or \"raveai file --inference\" (ALL TODO)");
+        std::exit(1);
     }
-
-    for(int i=0; i<nHiddenNodes; i++) {
-    	for(int j=0; j<nHiddenNodes+1; j++) {
-            float frand = (cast(float)std::randomShort());
-    		float w2 = wmax * (1.0f - (2f * (frand / scale)));
-            char c = ' ';
-            if(((j % items) == (items - 1)) || (j == nHiddenNodes)) c = '\n';
-            libc::fprintf(fpWeightsOut._file, "%9.6f%c", cast(double)w2, c);
-    	}
+    if(argc == 2) {
+        char* inputFile = argv[1];
+        char* outputFile = "init_weights";
+        if(argc == 3) nHiddenNodes = std::string(argv[2]).toInt(); // Number of hidden nodes
+    
+        vocabSize = getVocabSize(inputFile);
+        nInputNodes = vocabSize; // Number of input nodes
+        nOutputNodes = vocabSize; // Number of output nodes
+    
+        fpWeightsOut = std::file(outputFile);
+        fpWeightsOut.open("w");
+    
+        for(int i=0; i<nHiddenNodes; i++) {
+            for(int j=0; j<nInputNodes+1; j++) {
+                float frand = (cast(float)std::randomShort());
+                float w1 = wmax * (1.0f - (2f * (frand / scale)));
+                char c = ' ';
+                if(((j % items) == (items - 1)) || (j == nInputNodes)) c = '\n';
+                libc::fprintf(fpWeightsOut._file, "%9.6f%c", cast(double)w1, c);
+            }
+        }
+    
+        for(int i=0; i<nHiddenNodes; i++) {
+            for(int j=0; j<nHiddenNodes+1; j++) {
+                float frand = (cast(float)std::randomShort());
+                float w2 = wmax * (1.0f - (2f * (frand / scale)));
+                char c = ' ';
+                if(((j % items) == (items - 1)) || (j == nHiddenNodes)) c = '\n';
+                libc::fprintf(fpWeightsOut._file, "%9.6f%c", cast(double)w2, c);
+        	}
+        }
+    
+        for(int i=0; i<nOutputNodes; i++){
+        	for(int j=0; j<nHiddenNodes+1; j++){
+                float frand = (cast(float)std::randomShort());
+        		float w3 = wmax * (1.0f - 2f * frand / scale);
+                char c = ' ';
+                if(((j % items) == (items - 1)) || (j == nHiddenNodes)) c = '\n';
+                libc::fprintf(fpWeightsOut._file, "%9.6f%c", cast(double)w3, c);
+        	}
+        }
+        std::println("Weights written to file ", outputFile);
     }
-
-    for(int i=0; i<nOutputNodes; i++){
-    	for(int j=0; j<nHiddenNodes+1; j++){
-            float frand = (cast(float)std::randomShort());
-    		float w3 = wmax * (1.0f - 2f * frand / scale);
-            char c = ' ';
-            if(((j % items) == (items - 1)) || (j == nHiddenNodes)) c = '\n';
-            libc::fprintf(fpWeightsOut._file, "%9.6f%c", cast(double)w3, c);
-    	}
-    }
-    std::println("Weights written to file ", outputFile);
 }
