@@ -3,8 +3,11 @@ import <std/io> <std/math> <std/matrix> <std/random>
 alias maxWeight = 0.3f;
 alias scaleWeight = 32767f;
 alias items = 16;
+alias errorLevel = 0.2f;
 
 int vocabSize;
+
+extern(C) void rewind(libc::File* fl);
 
 int getVocabSize(char* fname) {
     std::file f = std::file(fname);
@@ -29,6 +32,37 @@ int getVocabSize(char* fname) {
     f.close();
 } => count;
 
+char* readContent(char* filename, int* len, int* nUnique) {
+    char* fcontent;
+    int fsize;
+    int[256] distinct;
+    int count;
+    std::file fl = std::file(filename);
+    fl.open("r");
+    libc::fseek(fl._file, 0, libc::seekEnd);
+    fsize = libc::ftell(fl._file);
+    rewind(fl._file);
+    fcontent = cast(char*)std::malloc(fsize);
+    fl.read(fcontent, 1, fsize);
+	int j = 0;
+    int c = fcontent[j];
+	while(c != '\0') {
+	    distinct[c] = 1;
+	    j += 1;
+        c = fcontent[j];
+	}
+	len[0] = j - 1;
+    int i = 0;
+	for(int z=0; z<256; z++) {
+	    if(distinct[z] > 0){
+	        count += 1;
+	        nUnique[i] = z;
+	        i += 1;
+	    }
+	}
+	vocabSize = count;
+    fl.close();
+} => fcontent;
 
 void main(int argc, char** argv) {
     float scale = scaleWeight;
@@ -86,5 +120,8 @@ void main(int argc, char** argv) {
         	}
         }
         std::println("Weights written to file ", outputFile);
+    }
+    else if(argc == 3) {
+
     }
 }
