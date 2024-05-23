@@ -7,8 +7,6 @@ alias errorLevel = 0.2f;
 
 int vocabSize;
 
-extern(C) void rewind(libc::File* fl);
-
 int getVocabSize(char* fname) {
     std::file f = std::file(fname);
     f.open("r");
@@ -26,6 +24,7 @@ int getVocabSize(char* fname) {
             i+=1;
         }
     }
+
     for(int j=0; j<256; j++){
         if(distinct[j] == 0) count += 1;
     }
@@ -41,7 +40,7 @@ char* readContent(char* filename, int* len, int* nUnique) {
     fl.open("r");
     libc::fseek(fl._file, 0, libc::seekEnd);
     fsize = libc::ftell(fl._file);
-    rewind(fl._file);
+    libc::fseek(fl._file, 0, libc::seekSet);
     fcontent = cast(char*)std::malloc(fsize);
     fl.read(fcontent, 1, fsize);
 	int j = 0;
