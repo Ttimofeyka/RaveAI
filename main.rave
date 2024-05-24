@@ -94,7 +94,7 @@ void main(int argc, char** argv) {
             for(int j=0; j<nInputNodes+1; j++) {
                 float frand = (cast(float)std::randomShort());
                 float w1 = wmax * (1.0f - (2f * (frand / scale)));
-                std::fprint(fpWeightsOut, (cast(char*)&w1)[0], (cast(char*)&w1)[1], (cast(char*)&w1)[2], (cast(char*)&w1)[3], ' ');
+                std::fprint(fpWeightsOut, (cast(char*)&w1)[0], (cast(char*)&w1)[1], (cast(char*)&w1)[2], (cast(char*)&w1)[3]);
             }
         }
     
@@ -102,7 +102,7 @@ void main(int argc, char** argv) {
             for(int j=0; j<nHiddenNodes+1; j++) {
                 float frand = (cast(float)std::randomShort());
                 float w2 = wmax * (1.0f - (2f * (frand / scale)));
-                std::fprint(fpWeightsOut, (cast(char*)&w2)[0], (cast(char*)&w2)[1], (cast(char*)&w2)[2], (cast(char*)&w2)[3], ' ');
+                std::fprint(fpWeightsOut, (cast(char*)&w2)[0], (cast(char*)&w2)[1], (cast(char*)&w2)[2], (cast(char*)&w2)[3]);
         	}
         }
     
@@ -110,7 +110,7 @@ void main(int argc, char** argv) {
         	for(int j=0; j<nHiddenNodes+1; j++){
                 float frand = (cast(float)std::randomShort());
         		float w3 = wmax * (1.0f - 2f * frand / scale);
-                std::fprint(fpWeightsOut, (cast(char*)&w3)[0], (cast(char*)&w3)[1], (cast(char*)&w3)[2], (cast(char*)&w3)[3], ' ');
+                std::fprint(fpWeightsOut, (cast(char*)&w3)[0], (cast(char*)&w3)[1], (cast(char*)&w3)[2], (cast(char*)&w3)[3]);
         	}
         }
         std::println("Weights written to file ", outputFile);

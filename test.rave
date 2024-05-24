@@ -333,8 +333,7 @@ int main(int argc, char** argv) {
     // Read input:hidden weights
     for(hi = 0; hi < nHiddenNodes; hi++){
       for(in = 0; in < nInputNodes+1; in++) {
-        fpWeights.read(&buffer, 1, 5);
-        fpWeights.read(&c, 1, 1);
+        fpWeights.read(&buffer, 1, 4);
         W_input_hidden.set(hi, in, (cast(float*)&buffer)[0]);
         mWxh.set(hi, in, 0f);
       }
@@ -343,8 +342,7 @@ int main(int argc, char** argv) {
     // Read hidden:hidden weights
     for(hi = 0; hi < nHiddenNodes; hi++){
       for(in = 0; in < nHiddenNodes+1; in++) {
-        fpWeights.read(&buffer, 1, 5);
-        fpWeights.read(&c, 1, 1);
+        fpWeights.read(&buffer, 1, 4);
         W_hidden_hidden.set(hi, in, (cast(float*)&buffer)[0]);
         mWhh.set(hi, in, 0f);
       }
@@ -353,7 +351,7 @@ int main(int argc, char** argv) {
     // Read hidden:output weights
     for(op = 0; op < nOutputNodes; op++){
       for(hi = 0; hi < nHiddenNodes+1; hi++) {
-        fpWeights.read(&buffer, 1, 5);
+        fpWeights.read(&buffer, 1, 4);
         W_hidden_output.set(hi, in, (cast(float*)&buffer)[0]);
         mWhy.set(op, hi, 0f);
       }
