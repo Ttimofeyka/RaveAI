@@ -73,50 +73,42 @@ char* readContent(char* filename, int* len, int* nUnique) {
 
 void create_dict(int* uniques){
   int c;
-  for(int i=0;i<vocab_size;i++){
-    c=uniques[i];
-    char_to_ix[c]=i;
-    ix_to_char[i]=c;
+  for(int i=0; i<vocab_size; i++){
+    c = uniques[i];
+    char_to_ix[c] = i;
+    ix_to_char[i] = c;
   }
 }
 
 float lossFun() {
-  int hi;					//index hidden layer
-	int in;					//index input layer
-	int op;					//index output layer
+  int hi;	// Index hidden layer
+	int in;	// Index input layer
+	int op;	// Index output layer
   float loss = 0;
 	float sum = 0;
 	float expsum = 0;
 
   //-----------------------Forward Pass----------------------------
 
-  // create one hot encoded vector (vocab_size x 1)
-  for(int t = 0; t < seq_length; t++){
-    for(int j = 0; j < vocab_size; j++){
-      xs.set(j, t, 0f);
-    }
+  // Create one hot encoded vector (vocab_size x 1)
+  for(int t = 0; t < seq_length; t++) {
+    for(int j = 0; j < vocab_size; j++) xs.set(j, t, 0f);
     xs.set(inputs[t], t, 1f);
   }
 
-  for(int t=0;t<seq_length;t++){
-    //compute new hidden state
+  for(int t=0; t<seq_length; t++){
+    // Compute new hidden state
     for(hi = 0; hi < nHiddenNodes; hi++){
       // sum = W_input_hidden[hi][nInputNodes]; //input to hidden bias
       sum = 0;
       // Matrix multiply input[i] and W_input_hidden[i]
-      for(in = 0; in < nInputNodes; in++){
-        sum += W_input_hidden.get(hi, in) * xs.get(in, t);
-      }
+      for(in = 0; in < nInputNodes; in++) sum += W_input_hidden.get(hi, in) * xs.get(in, t);
       // Matrix multiply prev_hidden[i] and W_hidden_hidden[i]
-      if(t==0){
-        for(in = 0; in < nHiddenNodes; in++){
-          sum += W_hidden_hidden.get(hi, in) * hprev.get(in, 0);
-        }
+      if(t == 0) {
+        for(in = 0; in < nHiddenNodes; in++) sum += W_hidden_hidden.get(hi, in) * hprev.get(in, 0);
       }
-      else{
-        for(in = 0; in < nHiddenNodes; in++){
-          sum += W_hidden_hidden.get(hi, in) * hs.get(in, t-1);
-        }
+      else {
+        for(in = 0; in < nHiddenNodes; in++) sum += W_hidden_hidden.get(hi, in) * hs.get(in, t-1);
       }
       sum += W_hidden_hidden.get(hi, nHiddenNodes); 	// hiden to hidden bias
 
@@ -124,7 +116,7 @@ float lossFun() {
       hs.set(hi, t, std::math::tanh(sum)); // use tanh
     }
 
-    // compute unnormalised log probabilities for next character
+    // Compute unnormalised log probabilities for next character
     for(op = 0; op < nOutputNodes; op++){
       sum = 0;
       for(hi = 0; hi < nHiddenNodes; hi++){
@@ -135,7 +127,7 @@ float lossFun() {
       ys.set(op, t, sum);
     }
 
-    //probabilities for next characters
+    // Probabilities for next characters
     expsum = 0;
     for(op = 0; op < nOutputNodes; op++){
       expsum += std::math::exp(ys.get(op, t));
@@ -144,53 +136,39 @@ float lossFun() {
       ps.set(op, t, std::math::exp(ys.get(op, t))/expsum);
     }
 
-    //calculate softmax ( cross-entropy loss) using negative log likelihood
+    // Calculate softmax (cross-entropy loss) using negative log likelihood
     loss += -std::math::log(ps.get(targets[t], t));
   }
 
   //---------------BACKWARD PASS----------------------
 
-  //----reset Deltas-----
-
   // input:hidden weight deltas
   for(hi = 0; hi < nHiddenNodes; hi++){
-    for(in = 0; in < nInputNodes + 1; in++){
-      delwxh.set(hi, in, 0f);
-    }
+    for(in = 0; in < nInputNodes + 1; in++) delwxh.set(hi, in, 0f);
   }
 
   // hidden:hidden weights deltas
   for(hi = 0; hi < nHiddenNodes; hi++){
-    for(in = 0; in < nHiddenNodes + 1; in++){
-      delwhh.set(hi, in, 0f);
-    }
+    for(in = 0; in < nHiddenNodes + 1; in++) delwhh.set(hi, in, 0f);
   }
 
   // hidden:output weights deltas
   for(op = 0; op < nOutputNodes; op++){
-    for(hi = 0; hi < nHiddenNodes + 1; hi++){
-      delwhy.set(op, hi, 0f);
-    }
+    for(hi = 0; hi < nHiddenNodes + 1; hi++) delwhy.set(op, hi, 0f);
   }
 
-  for(hi=0;hi<nHiddenNodes;hi++){
-    dhnext.set(hi, 0, 0f);
-  }
+  for(hi = 0; hi<nHiddenNodes; hi++) dhnext.set(hi, 0, 0f);
 
 
   // std::println("=======BACKWARD PASS=======\n" );
   for(int t = seq_length - 1; t >= 0; t--){
-    for(op = 0; op < nOutputNodes; op++){
-      dy.set(op, 0, ps.get(op, t));
-    }
+    for(op = 0; op < nOutputNodes; op++) dy.set(op, 0, ps.get(op, t));
     dy.set(targets[t], 0, dy.get(targets[t], 0) - 1);
 
     // calculate delwhy = (vocab_sizex1)x(nHiddenNodesx1)T
 		// =(vocab_size x 1)x(1 x nHiddenNodes)= (vocab_size x nHiddenNodes)
     for(op = 0; op < nOutputNodes; op++){
-      for(hi = 0; hi < nHiddenNodes; hi++){
-        delwhy.set(op, hi, delwhy.get(op, hi) + (dy.get(op, 0) * hs.get(hi, t)));
-      }
+      for(hi = 0; hi < nHiddenNodes; hi++) delwhy.set(op, hi, delwhy.get(op, hi) + (dy.get(op, 0) * hs.get(hi, t)));
       delwhy.set(op, nHiddenNodes, delwhy.get(op, nHiddenNodes) + dy.get(op, 0));
     }
 
@@ -200,9 +178,7 @@ float lossFun() {
 		// = (nHiddenNodes x 1)
     for(hi = 0; hi < nHiddenNodes; hi++){
       sum = 0;
-      for(op = 0; op < nOutputNodes; op++){
-          sum += W_hidden_output.get(op, hi) * dy.get(op, 0);
-      }
+      for(op = 0; op < nOutputNodes; op++) sum += W_hidden_output.get(op, hi) * dy.get(op, 0);
       dh.set(hi, 0, sum + dhnext.get(hi, 0));
     }
 
@@ -219,23 +195,15 @@ float lossFun() {
     // dhnext = (nHiddenNodes x nHiddenNodes)T x(nHiddenNodes x1)
 		// = (nHiddenNodesx1)
     for(hi = 0; hi < nHiddenNodes; hi++){
-      for(in = 0; in < nInputNodes; in++){
-        delwxh.set(hi, in, delwxh.get(hi, in) + dhraw.get(hi, 0) * xs.get(in, t));
-      }
+      for(in = 0; in < nInputNodes; in++) delwxh.set(hi, in, delwxh.get(hi, in) + dhraw.get(hi, 0) * xs.get(in, t));
       if(t==0){
-        for(op = 0; op < nHiddenNodes; op++){
-          delwhh.set(hi, op, delwhh.get(hi, op) + (dhraw.get(hi, 0) * hprev.get(op, 0)));
-        }
+        for(op = 0; op < nHiddenNodes; op++) delwhh.set(hi, op, delwhh.get(hi, op) + (dhraw.get(hi, 0) * hprev.get(op, 0)));
       }
       else{
-        for(op = 0; op < nHiddenNodes; op++){
-          delwhh.set(hi, op, delwhh.get(hi, op) + (dhraw.get(hi, 0) * hs.get(op, t-1)));
-        }
+        for(op = 0; op < nHiddenNodes; op++) delwhh.set(hi, op, delwhh.get(hi, op) + (dhraw.get(hi, 0) * hs.get(op, t-1)));
       }
       sum = 0;
-      for(op = 0; op < nHiddenNodes; op++){
-        sum += W_hidden_hidden.get(op, hi) * dhraw.get(op, 0);
-      }
+      for(op = 0; op < nHiddenNodes; op++) sum += W_hidden_hidden.get(op, hi) * dhraw.get(op, 0);
       dhnext.set(hi, 0, sum);
     }
   }
@@ -243,37 +211,23 @@ float lossFun() {
   //for exploding gradients
   for(hi = 0; hi < nHiddenNodes; hi++){
     for(in = 0; in < nInputNodes + 1; in++){
-        if(W_input_hidden.get(hi, in) < -5f){
-          W_input_hidden.set(hi, in, -5.0f);
-        }
-        else if(W_input_hidden.get(hi, in) > 5){
-          W_input_hidden.set(hi, in, 5.0f);
-        }
+        if(W_input_hidden.get(hi, in) < -5f) W_input_hidden.set(hi, in, -5.0f);
+        else if(W_input_hidden.get(hi, in) > 5f) W_input_hidden.set(hi, in, 5.0f);
     }
     for(in = 0; in < nHiddenNodes + 1; in++){
-      if(W_hidden_hidden.get(hi, in) < -5f){
-        W_hidden_hidden.set(hi, in, -5.0f);
-      }
-      else if(W_hidden_hidden.get(hi, in) > 5f){
-        W_hidden_hidden.set(hi, in, 5.0f);
-      }
+      if(W_hidden_hidden.get(hi, in) < -5f) W_hidden_hidden.set(hi, in, -5.0f);
+      else if(W_hidden_hidden.get(hi, in) > 5f) W_hidden_hidden.set(hi, in, 5.0f);
     }
   }
   for(op = 0; op <nOutputNodes; op++){
     for(hi = 0; hi < nHiddenNodes + 1; hi++){
-      if(W_hidden_output.get(op, hi) < -5f){
-        W_hidden_output.set(op, hi, -5.0f);
-      }
-      else if(W_hidden_output.get(op, hi) > 5f){
-        W_hidden_output.set(op, hi, 5.0f);
-      }
+      if(W_hidden_output.get(op, hi) < -5f) W_hidden_output.set(op, hi, -5.0f);
+      else if(W_hidden_output.get(op, hi) > 5f) W_hidden_output.set(op, hi, 5.0f);
     }
   }
 
   //update previous hidden
-  for(hi = 0; hi < nHiddenNodes; hi++){
-    hprev.set(hi, 0, hs.get(hi, seq_length-1));
-  }
+  for(hi = 0; hi < nHiddenNodes; hi++) hprev.set(hi, 0, hs.get(hi, seq_length-1));
 
   //--------------------Updating weights-----------
 
@@ -303,277 +257,253 @@ float lossFun() {
 }
 
 int main(int argc, char** argv) {
-  float errorLevel = 0.2f;	// satisfactory error level
-	int hi;								// index hidden layer
-	int in;								// index input layer
-	int op;								// index output layer
-  std::file fpWeights = std::file("init_weights");								// read initial weight file
+    float errorLevel = 0.2f;	// satisfactory error level
+    int hi;								// index hidden layer
+    int in;								// index input layer
+    int op;								// index output layer
 
-	int nReportErrors = 100;				// error reporting frequency
-	int nIterations = 100000;				//total training steps
-	eta = 0.15f;
-	nHiddenNodes = 100;
-	seq_length = 25;
-	npred = 200;
-  // char input_file[] = "input.txt";	// input data file
-  std::file fpWeightsOut = std::file("final_weights");
+    std::file fpWeights = std::file("init_weights");
+    std::file fpWeightsOut = std::file("final_weights");
 
-	if(argc < 2){
-		std::println("Usage: test inputfile [hiddensize]");
-		std::exit(1);
-	}
+    int nReportErrors = 100;				// error reporting frequency
+    int nIterations = 100000;				//total training steps
+    eta = 0.15f;
+    nHiddenNodes = 100;
+    seq_length = 25;
+    npred = 200;
 
-	char* input_file = argv[1];
-
-	if(argc == 3) nHiddenNodes = std::string(argv[2]).toInt();
-
-	char* data;
-  int len_data;										// total characters
-  int[256] uniques;								// to find distinct characters
-
-  inputs = cast(int*)std::malloc(seq_length * sizeof(int));	// input characters
-  targets = cast(int*)std::malloc(seq_length * sizeof(int));	// target characters
-
-  data = readContent(input_file, &len_data, &uniques);				// read the data file
-  // vocab_size = get_vocab_size(input_file,uniques);
-  nInputNodes = vocab_size;
-  nOutputNodes = vocab_size;
-
-  std::println("data has ", len_data, " characters, " vocab_size, " unique");
-
-  char_to_ix = cast(int*)std::malloc(256 * sizeof(int));					// char to index dict
-  ix_to_char = cast(int*)std::malloc(vocab_size * sizeof(int));	// index to char dict
-  create_dict(&uniques);
-
-  //-----------allocate storage for matrices------------------
-  W_input_hidden = std::matrix<float>(nHiddenNodes, nInputNodes + 1);
-  W_hidden_hidden = std::matrix<float>(nHiddenNodes,nHiddenNodes + 1); //hidden to hidden weights + bias
-  W_hidden_output = std::matrix<float>(nOutputNodes,nHiddenNodes + 1); //hidden to output weights + bias
-  delwxh = std::matrix<float>(nHiddenNodes, nInputNodes + 1);
-  delwhh = std::matrix<float>(nHiddenNodes,nHiddenNodes + 1);
-  delwhy = std::matrix<float>(nOutputNodes,nHiddenNodes + 1);
-  hprev = std::matrix<float>(nHiddenNodes, 1);
-  dhnext = std::matrix<float>(nHiddenNodes,1);
-  hpredict = std::matrix<float>(nHiddenNodes,1);
-	hptemp = std::matrix<float>(nHiddenNodes, 1);
-  xs = std::matrix<float>(vocab_size, seq_length);
-  hs = std::matrix<float>(nHiddenNodes, seq_length);
-  ys = std::matrix<float>(nOutputNodes, seq_length);
-  ps = std::matrix<float>(nOutputNodes, seq_length);
-  dy = std::matrix<float>(nOutputNodes, 1);
-  dh = std::matrix<float>(nHiddenNodes, 1);
-  dhraw = std::matrix<float>(nHiddenNodes, 1);
-  mWxh = std::matrix<float>(nHiddenNodes, nInputNodes + 1);
-  mWhh = std::matrix<float>(nHiddenNodes,nHiddenNodes + 1);
-  mWhy = std::matrix<float>(nOutputNodes,nHiddenNodes + 1);
-	cdf = std::matrix<float>(nOutputNodes, 1);
-
-
-  //----------Read the initial wieght matrices----------
-
-  fpWeights.open("r");
-  if(fpWeights._file == null) {
-    std::println("Can't open init weights file");
-    std::exit(1);
-  }
-
-  //read input:hidden weights
-  for(hi = 0; hi < nHiddenNodes; hi++){
-    for(in = 0; in < nInputNodes + 1; in++){
-      float f;
-      std::finput(fpWeights, &f);
-      W_input_hidden.set(hi, in, f);
-      mWxh.set(hi, in, 0f);
+    if(argc < 2){
+    	std::println("Usage: test inputfile [hiddensize]");
+    	std::exit(1);
     }
-  }
 
-  //read hidden:hidden wieghts
-  for(hi = 0; hi < nHiddenNodes; hi++){
-    for(in = 0; in < nHiddenNodes + 1; in++){
-      float f;
-      std::finput(fpWeights, &f);
-      W_hidden_hidden.set(hi, in, f);
-      mWhh.set(hi, in, 0f);
+    char* input_file = argv[1];
+
+    if(argc == 3) nHiddenNodes = std::string(argv[2]).toInt();
+
+    char* data;
+    int len_data;										// total characters
+    int[256] uniques;								// to find distinct characters
+
+    inputs = cast(int*)std::malloc(seq_length * sizeof(int));	// input characters
+    targets = cast(int*)std::malloc(seq_length * sizeof(int));	// target characters
+
+    data = readContent(input_file, &len_data, &uniques);				// read the data file
+    nInputNodes = vocab_size;
+    nOutputNodes = vocab_size;
+
+    std::println("data has ", len_data, " characters, " vocab_size, " unique");
+
+    char_to_ix = cast(int*)std::malloc(256 * sizeof(int));					// char to index dict
+    ix_to_char = cast(int*)std::malloc(vocab_size * sizeof(int));	// index to char dict
+    create_dict(&uniques);
+
+    //-----------allocate storage for matrices------------------
+    W_input_hidden = std::matrix<float>(nHiddenNodes, nInputNodes + 1);
+    W_hidden_hidden = std::matrix<float>(nHiddenNodes,nHiddenNodes + 1); //hidden to hidden weights + bias
+    W_hidden_output = std::matrix<float>(nOutputNodes,nHiddenNodes + 1); //hidden to output weights + bias
+    delwxh = std::matrix<float>(nHiddenNodes, nInputNodes + 1);
+    delwhh = std::matrix<float>(nHiddenNodes,nHiddenNodes + 1);
+    delwhy = std::matrix<float>(nOutputNodes,nHiddenNodes + 1);
+    hprev = std::matrix<float>(nHiddenNodes, 1);
+    dhnext = std::matrix<float>(nHiddenNodes,1);
+    hpredict = std::matrix<float>(nHiddenNodes,1);
+    hptemp = std::matrix<float>(nHiddenNodes, 1);
+    xs = std::matrix<float>(vocab_size, seq_length);
+    hs = std::matrix<float>(nHiddenNodes, seq_length);
+    ys = std::matrix<float>(nOutputNodes, seq_length);
+    ps = std::matrix<float>(nOutputNodes, seq_length);
+    dy = std::matrix<float>(nOutputNodes, 1);
+    dh = std::matrix<float>(nHiddenNodes, 1);
+    dhraw = std::matrix<float>(nHiddenNodes, 1);
+    mWxh = std::matrix<float>(nHiddenNodes, nInputNodes + 1);
+    mWhh = std::matrix<float>(nHiddenNodes,nHiddenNodes + 1);
+    mWhy = std::matrix<float>(nOutputNodes,nHiddenNodes + 1);
+    cdf = std::matrix<float>(nOutputNodes, 1);
+
+    fpWeights.open("r");
+    if(fpWeights._file == null) {
+      std::println("Can't open init weights file");
+      std::exit(1);
     }
-  }
 
-  //read hidden:output wieghts
-  for(op = 0; op < nOutputNodes; op++){
-    for(hi = 0; hi < nHiddenNodes +1; hi++){
-      float f;
-      std::finput(fpWeights, &f);
-      W_hidden_output.set(hi, in, f);
-      mWhy.set(op, hi, 0f);
-    }
-  }
-  fpWeights.close();
-
-  //----------------Read in all paterns to be learned-----------
-  int n = 0;
-  int p = 0;
-	float loss;
-  float smooth_loss = -(std::math::log(1f / vocab_size)) * seq_length;	// inital loss
-
-  while((n < nIterations) && (smooth_loss > errorLevel)) {
-    if((p + seq_length + 1 >= len_data) || n==0) {
-      for(hi=0;hi<nHiddenNodes;hi++){
-        hprev.set(hi, 0, 0f); //Reset RNN memory
+    //read input:hidden weights
+    for(hi = 0; hi < nHiddenNodes; hi++){
+      for(in = 0; in < nInputNodes + 1; in++){
+        float f;
+        std::finput(fpWeights, &f);
+        W_input_hidden.set(hi, in, f);
+        mWxh.set(hi, in, 0f);
       }
-      p = 0;
     }
 
-    //initialise inputs and targets
-    for(int i = 0; i < seq_length; i++) {
-      inputs[i] = char_to_ix[data[p + i]];
-      targets[i] = char_to_ix[data[p + 1 + i]];
+    //read hidden:hidden wieghts
+    for(hi = 0; hi < nHiddenNodes; hi++){
+      for(in = 0; in < nHiddenNodes + 1; in++){
+        float f;
+        std::finput(fpWeights, &f);
+        W_hidden_hidden.set(hi, in, f);
+        mWhh.set(hi, in, 0f);
+      }
     }
 
-    loss = lossFun();
-    smooth_loss = smooth_loss * 0.999f;
-    if(loss > 0f) smooth_loss += (loss * 0.001f);
-    // smooth_loss = (smooth_loss * 0.999f) + (loss * 0.001f);
-    if((n % nReportErrors) == 0){
-      //-----------------Sampling----------------
-      for(hi = 0; hi < nHiddenNodes; hi++) {
-        hpredict.set(hi, 0, hprev.get(hi, 0));
+    //read hidden:output wieghts
+    for(op = 0; op < nOutputNodes; op++){
+      for(hi = 0; hi < nHiddenNodes +1; hi++){
+        float f;
+        std::finput(fpWeights, &f);
+        W_hidden_output.set(hi, in, f);
+        mWhy.set(op, hi, 0f);
+      }
+    }
+    fpWeights.close();
+
+    //----------------Read in all paterns to be learned-----------
+    int n = 0;
+    int p = 0;
+    float loss;
+    float smooth_loss = -(std::math::log(1f / vocab_size)) * seq_length;	// inital loss
+
+    while((n < nIterations) && (smooth_loss > errorLevel)) {
+      if((p + seq_length + 1 >= len_data) || n == 0) {
+        for(hi=0; hi<nHiddenNodes; hi++) hprev.set(hi, 0, 0f); // Reset RNN memory
+        p = 0;
       }
 
-      for(int j = 0; j < vocab_size; j++) {
-        xs.set(j, 0, 0f);
+      // Initialise inputs and targets
+      for(int i = 0; i < seq_length; i++) {
+        inputs[i] = char_to_ix[data[p + i]];
+        targets[i] = char_to_ix[data[p + 1 + i]];
       }
-      xs.set(inputs[0], 0, 1f);
-			float sum = 0;
-			float uniform_samples;
-      for(int t = 0; t < npred; t++){
-        //compute new hidden state
-        for(hi = 0; hi < nHiddenNodes; hi++){
-          // sum = W_input_hidden[hi][nInputNodes]; //input to hidden bias
-          sum = 0;
-          // Matrix multiply input[i] and W_input_hidden[i]
-          for(in = 0; in < nInputNodes; in++){
-            sum += W_input_hidden.get(hi, in) * xs.get(in, 0);
+
+      loss = lossFun();
+      smooth_loss = smooth_loss * 0.999f;
+      if(loss > 0f) smooth_loss += (loss * 0.001f);
+      if((n % nReportErrors) == 0){
+        //-----------------Sampling----------------
+        for(hi = 0; hi < nHiddenNodes; hi++) hpredict.set(hi, 0, hprev.get(hi, 0));
+        for(int j = 0; j < vocab_size; j++) xs.set(j, 0, 0f);
+        xs.set(inputs[0], 0, 1f);
+
+    		float sum = 0;
+    		float uniform_samples;
+        for(int t = 0; t < npred; t++){
+          //compute new hidden state
+          for(hi = 0; hi < nHiddenNodes; hi++) {
+            // sum = W_input_hidden[hi][nInputNodes]; //input to hidden bias
+            sum = 0;
+            // Matrix multiply input[i] and W_input_hidden[i]
+            for(in = 0; in < nInputNodes; in++) sum += W_input_hidden.get(hi, in) * xs.get(in, 0);
+            // Matrix multiply prev_hidden[i] and W_hidden_hidden[i]
+            for(in = 0; in < nHiddenNodes; in++) sum += W_hidden_hidden.get(hi, in) * hpredict.get(in, 0);
+            sum += W_hidden_hidden.get(hi, nHiddenNodes);
+            // hs[hi][t] =1.0/(1.0 + exp(-sum)); // use sigmoid
+            hptemp.set(hi, 0, std::math::tanh(sum)); // use tanh
           }
-          // Matrix multiply prev_hidden[i] and W_hidden_hidden[i]
-          for(in = 0; in < nHiddenNodes; in++){
-            sum += W_hidden_hidden.get(hi, in) * hpredict.get(in, 0);
+    			for(hi = 0; hi < nHiddenNodes; hi++) {
+    				hpredict[hi][0] = hptemp[hi][0];
+            hpredict.set(hi, 0, hptemp.get(hi, 0));
+    			}
+          //compute unnormalised log probabilities for next character
+          for(op = 0; op < nOutputNodes; op++) {
+            sum = 0;
+            for(hi =0; hi < nHiddenNodes; hi++) sum += W_hidden_output.get(op, hi) * hpredict.get(hi, 0);
+            sum += W_hidden_output.get(op, nHiddenNodes); // hidden to output bias
+            ys.set(op, 0, sum);
           }
-          sum += W_hidden_hidden.get(hi, nHiddenNodes);
-          // hs[hi][t] =1.0/(1.0 + exp(-sum)); // use sigmoid
-          hptemp.set(hi, 0, std::math::tanh(sum)); // use tanh
-        }
-				for(hi = 0; hi < nHiddenNodes; hi++){
-					hpredict[hi][0] = hptemp[hi][0];
-          hpredict.set(hi, 0, hptemp.get(hi, 0));
-				}
-        //compute unnormalised log probabilities for next character
-        for(op = 0; op < nOutputNodes; op++){
-          sum = 0;
-          for(hi =0; hi < nHiddenNodes; hi++){
-            sum += W_hidden_output.get(op, hi) * hpredict.get(hi, 0);
-          }
-          sum += W_hidden_output.get(op, nHiddenNodes); // hidden to output bias
-          ys.set(op, 0, sum);
-        }
 
-        //probabilities for next characters
-        float expsum = 0;
-        for(op = 0; op < nOutputNodes; op++) {
-          expsum += std::math::exp(ys.get(op, 0));
-        }
-        for(op = 0; op < nOutputNodes; op++) {
-          ps.set(op, 0, std::math::exp(ys.get(op, 0)) / expsum);
-        }
+          //probabilities for next characters
+          float expsum = 0;
+          for(op = 0; op < nOutputNodes; op++) expsum += std::math::exp(ys.get(op, 0));
+          for(op = 0; op < nOutputNodes; op++) ps.set(op, 0, std::math::exp(ys.get(op, 0)) / expsum);
 
-        //find index using probability distribution
+          //find index using probability distribution
 
-				sum = 0f;
-				for(op = 0; op < nOutputNodes; op++) {
-					sum += ps.get(op, 0);
-					cdf.set(op, 0, sum);
-				}
-				for(op = 0; op < nOutputNodes; op++) {
-					cdf.set(op, 0, cdf.get(op, 0) / cdf.get(nOutputNodes - 1, 0));
-				}
-				uniform_samples = cast(double)(std::randomShort() / 32768d);
-				//searchsorted
-				ix= 0;
-				for(op = nOutputNodes - 1; op > 0; op--) {
-					if(uniform_samples >= cdf.get(op - 1, 0) && uniform_samples <= cdf.get(op, 0)){
-						ix = op;
-						break;
-					}
-				}
-				for(int j = 0; j < vocab_size; j++) xs.set(j, 0, 0f);
-        xs.set(ix, 0, 1f);
+    			sum = 0f;
+    			for(op = 0; op < nOutputNodes; op++) {
+    				sum += ps.get(op, 0);
+    				cdf.set(op, 0, sum);
+    			}
+    			for(op = 0; op < nOutputNodes; op++) cdf.set(op, 0, cdf.get(op, 0) / cdf.get(nOutputNodes - 1, 0));
+    			uniform_samples = cast(double)(std::randomShort() / 32768d);
+    			//searchsorted
+    			ix= 0;
+    			for(op = nOutputNodes - 1; op > 0; op--) {
+    				if(uniform_samples >= cdf.get(op - 1, 0) && uniform_samples <= cdf.get(op, 0)){
+    					ix = op;
+    					break;
+    				}
+    			}
+    			for(int j = 0; j < vocab_size; j++) xs.set(j, 0, 0f);
+          xs.set(ix, 0, 1f);
+        }
+    		std::println("\n--------------------------------------");
+        std::println("Iteration ", n, ", loss: ", smooth_loss);
+    		std::println("======================================");
       }
-			std::println("\n--------------------------------------");
-      std::println("Iteration ", n, ", loss: ", smooth_loss);
-			std::println("======================================");
+
+      p += seq_length;
+      n += 1;
     }
 
-    p += seq_length;
-    n += 1;
-  }
-
-	//--------Store Final weights---------------
-
-  fpWeightsOut.open("w");
-	if(fpWeightsOut._file == null) {
-		std::println("can't write file final_weights");
-		std::exit(1);
-	}
-	// write input:hidden weights
-  for(hi = 0; hi < nHiddenNodes; hi++){
-    for(in = 0; in < nInputNodes + 1; in++){
-        char c = ' ';
-        if(((in % items) == (items - 1)) || (in == nHiddenNodes)) c = '\n';
-        std::fprint(fpWeightsOut, W_input_hidden.get(hi, in), c);
+    //--------Store Final weights---------------
+    fpWeightsOut.open("w");
+    if(fpWeightsOut._file == null) {
+    	std::println("can't write file final_weights");
+    	std::exit(1);
     }
-  }
-
-  //read hidden:hidden weights
-  for(hi = 0; hi < nHiddenNodes; hi++){
-    for(in = 0; in < nHiddenNodes +1; in++){
-        char c = ' ';
-        if(((in % items) == (items - 1)) || (in == nHiddenNodes)) c = '\n';
-		    std::fprint(fpWeightsOut, W_hidden_hidden.get(hi, in), c);
+    // write input:hidden weights
+    for(hi = 0; hi < nHiddenNodes; hi++){
+      for(in = 0; in < nInputNodes + 1; in++){
+          char c = ' ';
+          if(((in % items) == (items - 1)) || (in == nHiddenNodes)) c = '\n';
+          std::fprint(fpWeightsOut, W_input_hidden.get(hi, in), c);
+      }
     }
-  }
 
-  //read hidden:output weights
-  for(op = 0; op < nOutputNodes; op++){
-    for(hi = 0; hi < nHiddenNodes +1; hi++){
-        char c = ' ';
-        if(((hi % items) == (items - 1)) || (hi == nHiddenNodes)) c = '\n';
-		    std::fprint(fpWeightsOut, W_hidden_output.get(op, hi), c);
+    //read hidden:hidden weights
+    for(hi = 0; hi < nHiddenNodes; hi++){
+      for(in = 0; in < nHiddenNodes +1; in++){
+          char c = ' ';
+          if(((in % items) == (items - 1)) || (in == nHiddenNodes)) c = '\n';
+    	    std::fprint(fpWeightsOut, W_hidden_hidden.get(hi, in), c);
+      }
     }
-  }
 
-  fpWeightsOut.close();
-	~W_input_hidden;
-	~W_hidden_hidden;
-	~W_hidden_output;
-	~delwxh;
-	~delwhh;
-	~delwhy;
-	~hprev;
-	~dhnext;
-	~hpredict;
-	~hptemp;
-	~xs;
-	~hs;
-	~ys;
-	~ps;
-	~dy;
-	~dh;
-	~dhraw;
-	~mWxh;
-	~mWhh;
-	~mWhy;
-	~cdf;
-	std::free(cast(void*)inputs);
-	std::free(cast(void*)targets);
-	std::free(cast(void*)char_to_ix);
-	std::free(cast(void*)ix_to_char);
-  return = 0;
+    //read hidden:output weights
+    for(op = 0; op < nOutputNodes; op++){
+      for(hi = 0; hi < nHiddenNodes +1; hi++){
+          char c = ' ';
+          if(((hi % items) == (items - 1)) || (hi == nHiddenNodes)) c = '\n';
+    	    std::fprint(fpWeightsOut, W_hidden_output.get(op, hi), c);
+      }
+    }
+
+    fpWeightsOut.close();
+    ~W_input_hidden;
+    ~W_hidden_hidden;
+    ~W_hidden_output;
+    ~delwxh;
+    ~delwhh;
+    ~delwhy;
+    ~hprev;
+    ~dhnext;
+    ~hpredict;
+    ~hptemp;
+    ~xs;
+    ~hs;
+    ~ys;
+    ~ps;
+    ~dy;
+    ~dh;
+    ~dhraw;
+    ~mWxh;
+    ~mWhh;
+    ~mWhy;
+    ~cdf;
+    std::free(cast(void*)inputs);
+    std::free(cast(void*)targets);
+    std::free(cast(void*)char_to_ix);
+    std::free(cast(void*)ix_to_char);
+    return = 0;
 }
