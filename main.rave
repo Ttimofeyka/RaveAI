@@ -18,50 +18,20 @@ int getVocabSize(char* fname) {
 
     while(f.gets(&buf, 1000) != null) {
         i = 0;
-        while(buf[i]!='\0'){
+        while(buf[i]!='\0') {
             c = buf[i];
             distinct[c] = 1;
             i+=1;
         }
     }
 
-    for(int j=0; j<256; j++){
+    for(int j=0; j<256; j++) {
         if(distinct[j] == 0) count += 1;
     }
     f.close();
 } => count;
 
-char* readContent(char* filename, int* len, int* nUnique) {
-    char* fcontent;
-    int fsize;
-    int[256] distinct;
-    int count;
-    std::file fl = std::file(filename);
-    fl.open("r");
-    fl.seek(0, libc::seekEnd);
-    fsize = libc::ftell(fl._file);
-    fl.seek(0, libc::seekSet);
-    fcontent = cast(char*)std::malloc(fsize);
-    fl.read(fcontent, 1, fsize);
-	int j = 0;
-    int c = fcontent[j];
-	while(c != '\0') {
-	    distinct[c] = 1;
-	    j += 1;
-        c = fcontent[j];
-	}
-	len[0] = j - 1;
-    int i = 0;
-	for(int z=0; z<256; z++) {
-	    if(distinct[z] > 0){
-	        count += 1;
-	        nUnique[i] = z;
-	        i += 1;
-	    }
-	}
-	vocabSize = count;
-    fl.close();
-} => fcontent;
+extern(C) int ferror(libc::File* f);
 
 void main(int argc, char** argv) {
     float scale = scaleWeight;
@@ -89,30 +59,34 @@ void main(int argc, char** argv) {
     
         fpWeightsOut = std::file(outputFile);
         fpWeightsOut.open("w");
+
+        float temp;
+        float frand;
     
         for(int i=0; i<nHiddenNodes; i++) {
-            for(int j=0; j<nInputNodes+1; j++) {
-                float frand = (cast(float)std::randomShort());
-                float w1 = wmax * (1.0f - (2f * (frand / scale)));
-                std::fprint(fpWeightsOut, (cast(char*)&w1)[0], (cast(char*)&w1)[1], (cast(char*)&w1)[2], (cast(char*)&w1)[3]);
+            for(int j=0; j<nInputNodes + 1; j++) {
+                frand = (cast(float)std::randomShort());
+                temp = wmax * (1.0f - (2f * (frand / scale)));
+                fpWeightsOut.write(cast(char*)&temp, 1, 4);
             }
         }
     
         for(int i=0; i<nHiddenNodes; i++) {
-            for(int j=0; j<nHiddenNodes+1; j++) {
-                float frand = (cast(float)std::randomShort());
-                float w2 = wmax * (1.0f - (2f * (frand / scale)));
-                std::fprint(fpWeightsOut, (cast(char*)&w2)[0], (cast(char*)&w2)[1], (cast(char*)&w2)[2], (cast(char*)&w2)[3]);
+            for(int j=0; j<nHiddenNodes + 1; j++) {
+                frand = (cast(float)std::randomShort());
+                temp = wmax * (1.0f - (2f * (frand / scale)));
+                fpWeightsOut.write(cast(char*)&temp, 1, 4);
         	}
         }
     
         for(int i=0; i<nOutputNodes; i++){
-        	for(int j=0; j<nHiddenNodes+1; j++){
-                float frand = (cast(float)std::randomShort());
-        		float w3 = wmax * (1.0f - 2f * frand / scale);
-                std::fprint(fpWeightsOut, (cast(char*)&w3)[0], (cast(char*)&w3)[1], (cast(char*)&w3)[2], (cast(char*)&w3)[3]);
+        	for(int j=0; j<nHiddenNodes + 1; j++) {
+                frand = (cast(float)std::randomShort());
+        		temp = wmax * (1.0f - 2f * frand / scale);
+                fpWeightsOut.write(cast(char*)&temp, 1, 4);
         	}
         }
+        fpWeightsOut.close();
         std::println("Weights written to file ", outputFile);
     }
 }

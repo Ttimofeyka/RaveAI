@@ -89,6 +89,7 @@ float lossFun() {
   float expsum = 0;
 
   //-----------------------Forward Pass----------------------------
+  // std::println("Forward pass");
 
   // Create one hot encoded vector (vocab_size x 1)
   for(int t = 0; t < seq_length; t++) {
@@ -160,7 +161,7 @@ float lossFun() {
   for(hi = 0; hi<nHiddenNodes; hi++) dhnext.set(hi, 0, 0f);
 
 
-  // std::println("=======BACKWARD PASS=======\n" );
+  // std::println("=======BACKWARD PASS=======");
   for(int t = seq_length - 1; t >= 0; t--){
     for(op = 0; op < nOutputNodes; op++) dy.set(op, 0, ps.get(op, t));
     dy.set(targets[t], 0, dy.get(targets[t], 0) - 1);
@@ -232,22 +233,22 @@ float lossFun() {
   //--------------------Updating weights-----------
 
   // Perform parameter update with Adagrad
-  for(hi = 0; hi < nHiddenNodes; hi++){
-    for(in = 0; in < nInputNodes + 1; in++){
+  for(hi = 0; hi < nHiddenNodes; hi++) {
+    for(in = 0; in < nInputNodes + 1; in++) {
       mWxh.set(hi, in, mWxh.get(hi, in) + (delwxh.get(hi, in) * delwxh.get(hi, in)));
       W_input_hidden.set(hi, in, W_input_hidden.get(hi, in) + (-eta * delwxh.get(hi, in) / std::math::sqrt(mWxh.get(hi, in) + 0.00000001f)));
     }
   }
 
   for(hi = 0; hi < nHiddenNodes; hi++){
-    for(in = 0; in < nHiddenNodes + 1; in++){
+    for(in = 0; in < nHiddenNodes + 1; in++) {
       mWhh.set(hi, in, mWhh.get(hi, in) + (delwhh.get(hi, in) * delwhh.get(hi, in)));
       W_hidden_hidden.set(hi, in, W_hidden_hidden.get(hi, in) + (-eta * delwhh.get(hi, in) / std::math::sqrt(mWhh.get(hi, in) + 0.00000001f)));
     }
   }
 
   for(hi = 0; hi < nOutputNodes; hi++){
-    for(in = 0; in < nHiddenNodes + 1; in++){
+    for(in = 0; in < nHiddenNodes + 1; in++) {
       mWhy.set(hi, in, mWhy.get(hi, in) + (delwhy.get(hi, in) * delwhy.get(hi, in)));
       W_hidden_output.set(hi, in, W_hidden_output.get(hi, in) + (-eta * delwhy.get(hi, in) / std::math::sqrt(mWhy.get(hi, in) + 0.00000001f)));
     }
@@ -272,7 +273,7 @@ int main(int argc, char** argv) {
     seq_length = 25;
     npred = 200;
 
-    if(argc < 2){
+    if(argc < 2) {
       std::println("Usage: test inputfile [hiddensize]");
       std::exit(1);
     }
@@ -306,8 +307,8 @@ int main(int argc, char** argv) {
     delwhh = std::matrix<float>(nHiddenNodes, nHiddenNodes + 1);
     delwhy = std::matrix<float>(nOutputNodes, nHiddenNodes + 1);
     hprev = std::matrix<float>(nHiddenNodes, 1);
-    dhnext = std::matrix<float>(nHiddenNodes,1);
-    hpredict = std::matrix<float>(nHiddenNodes,1);
+    dhnext = std::matrix<float>(nHiddenNodes, 1);
+    hpredict = std::matrix<float>(nHiddenNodes, 1);
     hptemp = std::matrix<float>(nHiddenNodes, 1);
     xs = std::matrix<float>(vocab_size, seq_length);
     hs = std::matrix<float>(nHiddenNodes, seq_length);
@@ -322,38 +323,43 @@ int main(int argc, char** argv) {
     cdf = std::matrix<float>(nOutputNodes, 1);
 
     fpWeights.open("r");
-    if(fpWeights._file == null) {
+    if(!(fpWeights.isOpen)) {
       std::println("Can't open init weights file");
       std::exit(1);
     }
 
-    char[5] buffer;
-    char c;
+    char[4] buffer;
 
     // Read input:hidden weights
     for(hi = 0; hi < nHiddenNodes; hi++){
       for(in = 0; in < nInputNodes+1; in++) {
-        fpWeights.read(&buffer, 1, 4);
+        if(fpWeights.read(&buffer, 1, 4) != 4) {
+          std::println("Incorrect read!");
+          std::exit(1);
+        }
         W_input_hidden.set(hi, in, (cast(float*)&buffer)[0]);
-        mWxh.set(hi, in, 0f);
       }
     }
 
     // Read hidden:hidden weights
     for(hi = 0; hi < nHiddenNodes; hi++){
       for(in = 0; in < nHiddenNodes+1; in++) {
-        fpWeights.read(&buffer, 1, 4);
+        if(fpWeights.read(&buffer, 1, 4) != 4) {
+          std::println("Incorrect read!");
+          std::exit(1);
+        }
         W_hidden_hidden.set(hi, in, (cast(float*)&buffer)[0]);
-        mWhh.set(hi, in, 0f);
       }
     }
 
     // Read hidden:output weights
     for(op = 0; op < nOutputNodes; op++){
       for(hi = 0; hi < nHiddenNodes+1; hi++) {
-        fpWeights.read(&buffer, 1, 4);
+        if(fpWeights.read(&buffer, 1, 4) != 4) {
+          std::println("Incorrect read!");
+          std::exit(1);
+        }
         W_hidden_output.set(hi, in, (cast(float*)&buffer)[0]);
-        mWhy.set(op, hi, 0f);
       }
     }
     fpWeights.close();
@@ -366,7 +372,9 @@ int main(int argc, char** argv) {
 
     while((n < nIterations) && (smooth_loss > errorLevel)) {
       if((p + seq_length + 1 >= len_data) || n == 0) {
-        for(hi=0; hi<nHiddenNodes; hi++) hprev.set(hi, 0, 0f); // Reset RNN memory
+        for(hi=0; hi<nHiddenNodes; hi++) {
+          hprev.set(hi, 0, 0f); // Reset RNN memory
+        }
         p = 0;
       }
 
@@ -379,7 +387,8 @@ int main(int argc, char** argv) {
       loss = lossFun();
       smooth_loss = smooth_loss * 0.999f;
       if(loss > 0f) smooth_loss += (loss * 0.001f);
-      if((n % nReportErrors) == 0){
+
+      if((n % nReportErrors) == 0) {
         //-----------------Sampling----------------
         for(hi = 0; hi < nHiddenNodes; hi++) hpredict.set(hi, 0, hprev.get(hi, 0));
         for(int j = 0; j < vocab_size; j++) xs.set(j, 0, 0f);
@@ -387,7 +396,7 @@ int main(int argc, char** argv) {
 
     		float sum = 0;
     		float uniform_samples;
-        for(int t = 0; t < npred; t++){
+        for(int t = 0; t < npred; t++) {
           // Compute new hidden state
           for(hi = 0; hi < nHiddenNodes; hi++) {
             // sum = W_input_hidden[hi][nInputNodes]; // Input to hidden bias
@@ -401,8 +410,7 @@ int main(int argc, char** argv) {
             hptemp.set(hi, 0, std::math::tanh(sum)); // use tanh
           }
     			for(hi = 0; hi < nHiddenNodes; hi++) {
-    				hpredict[hi][0] = hptemp[hi][0];
-            hpredict.set(hi, 0, hptemp.get(hi, 0));
+    				hpredict.set(hi, 0, hptemp.get(hi, 0));
     			}
           // Compute unnormalised log probabilities for next character
           for(op = 0; op < nOutputNodes; op++) {
@@ -453,29 +461,26 @@ int main(int argc, char** argv) {
     	std::exit(1);
     }
     // Write input:hidden weights
-    for(hi = 0; hi < nHiddenNodes; hi++){
-      for(in = 0; in < nInputNodes + 1; in++){
-          char c = ' ';
-          if(((in % items) == (items - 1)) || (in == nHiddenNodes)) c = '\n';
-          std::fprint(fpWeightsOut, W_input_hidden.get(hi, in), c);
+    for(hi = 0; hi < nHiddenNodes; hi++) {
+      for(in = 0; in < nInputNodes + 1; in++) {
+        float f = W_input_hidden.get(hi, in);
+        std::fprint(fpWeightsOut, (cast(char*)&f)[0], (cast(char*)&f)[1], (cast(char*)&f)[2], (cast(char*)&f)[3]);
       }
     }
 
     // Read hidden:hidden weights
-    for(hi = 0; hi < nHiddenNodes; hi++){
-      for(in = 0; in < nHiddenNodes +1; in++){
-          char c = ' ';
-          if(((in % items) == (items - 1)) || (in == nHiddenNodes)) c = '\n';
-    	    std::fprint(fpWeightsOut, W_hidden_hidden.get(hi, in), c);
+    for(hi = 0; hi < nHiddenNodes; hi++) {
+      for(in = 0; in < nHiddenNodes +1; in++) {
+        float f = W_hidden_hidden.get(hi, in);
+    	  std::fprint(fpWeightsOut, (cast(char*)&f)[0], (cast(char*)&f)[1], (cast(char*)&f)[2], (cast(char*)&f)[3]);
       }
     }
 
     // Read hidden:output weights
     for(op = 0; op < nOutputNodes; op++){
-      for(hi = 0; hi < nHiddenNodes +1; hi++){
-          char c = ' ';
-          if(((hi % items) == (items - 1)) || (hi == nHiddenNodes)) c = '\n';
-    	    std::fprint(fpWeightsOut, W_hidden_output.get(op, hi), c);
+      for(hi = 0; hi < nHiddenNodes +1; hi++) {
+        float f = W_hidden_output.get(op, hi);
+    	  std::fprint(fpWeightsOut, (cast(char*)&f)[0], (cast(char*)&f)[1], (cast(char*)&f)[2], (cast(char*)&f)[3]);
       }
     }
 
