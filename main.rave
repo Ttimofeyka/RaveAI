@@ -1,92 +1,134 @@
-import <std/io> <std/math> <std/matrix> <std/random>
+import <std/io> <std/matrix> <std/math> <std/random>
 
-alias maxWeight = 0.3f;
-alias scaleWeight = 32767f;
-alias items = 16;
-alias errorLevel = 0.2f;
+struct RNN {
+    int inputSize;
+    int hiddenSize;
+    int outputSize;
 
-int vocabSize;
+    std::matrix<double> Wxh;
+    std::matrix<double> Whh;
+    std::matrix<double> Why;
+    std::vector<double> bh;
+    std::vector<double> by;
 
-int getVocabSize(char* fname) {
-    std::file f = std::file(fname);
-    f.open("r");
-    char[1000] buf;
-    int[256] distinct;
-    int i = 0;
-    int c;
-    int count = 0;
+    std::vector<double> hPrev;
 
-    while(f.gets(&buf, 1000) != null) {
-        i = 0;
-        while(buf[i]!='\0') {
-            c = buf[i];
-            distinct[c] = 1;
-            i+=1;
+    double learningRate;
+
+    RNN this(int inputSize, int hiddenSize, int outputSize, double learningRate) {
+        RNN this;
+        this.inputSize = inputSize;
+        this.hiddenSize = hiddenSize;
+        this.outputSize = outputSize;
+        this.learningRate = learningRate;
+        this.Wxh = std::matrix<double>(hiddenSize, inputSize);
+        this.Whh = std::matrix<double>(hiddenSize, hiddenSize);
+        this.Why = std::matrix<double>(hiddenSize, outputSize);
+
+        for(int i=0; i<(hiddenSize * inputSize); i++) this.Wxh.data[i] = ((cast(double)std::randomShort()) / 32767d);
+        for(int i=0; i<(hiddenSize * hiddenSize); i++) this.Whh.data[i] = ((cast(double)std::randomShort()) / 32767d);
+        for(int i=0; i<(hiddenSize * outputSize); i++) this.Why.data[i] = ((cast(double)std::randomShort()) / 32767d);
+
+        this.bh = std::vector<double>(hiddenSize);
+        this.bh.zero();
+    
+        this.by = std::vector<double>(outputSize);
+        this.by.zero();
+
+        this.hPrev = std::vector<double>(hiddenSize);
+        this.hPrev.zero();
+    } => this;
+
+    std::vector<double> forward(std::vector<double> input) {
+        std::vector<double> h = std::vector<double>(this.hiddenSize);
+        h.zero();
+
+        for(int i=0; i<this.hiddenSize; i++) {
+            for(int j=0; j<this.inputSize; j++) h.data[i] += this.Wxh.get(i, j) * input[j];
+            h[i] += this.bh.data[i];
+            h[i] = std::math::tanh(h[i] + this.Whh.get(i, i) * this.hPrev.data[i]); // Recurrent connection
         }
-    }
 
-    for(int j=0; j<256; j++) {
-        if(distinct[j] == 0) count += 1;
-    }
-    f.close();
-} => count;
+        std::vector<double> output = std::vector<double>(this.outputSize);
+        output.zero();
 
-extern(C) int ferror(libc::File* f);
+        for(int i=0; i<this.outputSize; i++) {
+            for(int j=0; j<this.hiddenSize; j++) output.data[i] += this.Why.get(i, j) * h.data[j];
+            output.data[i] += this.by.data[i];
+        }
 
-void main(int argc, char** argv) {
-    float scale = scaleWeight;
-    float wmax = maxWeight;
-    std::file fpWeightsOut;
+        for(int i=0; i<this.hiddenSize; i++) this.hPrev.data[i] = h.data[i];
+        ~h;
+        std::math::softmax(output);
+    } => output;
 
-    int nInputNodes;
-    int nHiddenNodes = 100;
-    int nOutputNodes;
+    void train(std::vector<std::vector<double>> inputs, std::vector<std::vector<double>> targets, int epochs) {
+        std::vector<double> dh = std::vector<double>(this.hiddenSize);
+        std::vector<double> lossGradient = std::vector<double>();
+        std::vector<double> prediction;
+        for(int epoch=0; epoch<epochs; epoch++) {
+            for(int i=0; i<inputs.length; i++) {
+                prediction = this.forward(inputs.data[i]);
 
-    if(argc < 2) {
-        std::println("For initializing weights, use \"raveai file [hiddenNodes]\"");
-        std::println("Otherwise, use \"raveai file --training\" or \"raveai file --inference\" (ALL TODO)");
-        std::exit(1);
-    }
-    if(argc == 3) {
-        // --training and --inference TODO
-        char* inputFile = argv[1];
-        char* outputFile = "init_weights";
-        if(argc == 3) nHiddenNodes = std::string(argv[2]).toInt(); // Number of hidden nodes
-    
-        vocabSize = getVocabSize(inputFile);
-        nInputNodes = vocabSize; // Number of input nodes
-        nOutputNodes = vocabSize; // Number of output nodes
-    
-        fpWeightsOut = std::file(outputFile);
-        fpWeightsOut.open("w");
+                lossGradient.length = 0;
+                for(int j=0; j<prediction.length; j++) lossGradient.add(prediction.data[j] - targets.data[i].data[j]);
 
-        float temp;
-        float frand;
-    
-        for(int i=0; i<nHiddenNodes; i++) {
-            for(int j=0; j<nInputNodes + 1; j++) {
-                frand = (cast(float)std::randomShort());
-                temp = wmax * (1.0f - (2f * (frand / scale)));
-                fpWeightsOut.write(cast(char*)&temp, 1, 4);
+                // Backpropagation through time (BPTT)
+                dh.zero();
+                for(int j=0; j<this.outputSize; j++) {
+                    for(int k=0; k<this.hiddenSize; k++) {
+                        this.Why.set(j, k, this.Why.get(j, k) - this.learningRate * lossGradient.data[j] * this.hPrev.data[k]);
+                        dh.data[k] += this.Why.get(j, k) * lossGradient.data[j];
+                    }
+                    this.by.data[j] -= this.learningRate * lossGradient.data[j];
+                }
+
+                for(int j=0; j<this.hiddenSize; j++) {
+                    dh.data[j] *= (1d - this.hPrev.data[j] * this.hPrev.data[j]); // Derivative of tanh
+                    for(int k=0; k<this.inputSize; k++) this.Wxh.set(j, k, this.Wxh.get(j, k) - this.learningRate * dh.data[j] * inputs.data[i].data[k]);
+                    for(int k=0; k<this.hiddenSize; k++) this.Whh.set(j, k, this.Whh.get(j, k) - this.learningRate * dh.data[j] * this.hPrev.data[k]);
+                    this.bh.data[j] -= this.learningRate * dh.data[j];
+                }
+                ~prediction;
             }
         }
-    
-        for(int i=0; i<nHiddenNodes; i++) {
-            for(int j=0; j<nHiddenNodes + 1; j++) {
-                frand = (cast(float)std::randomShort());
-                temp = wmax * (1.0f - (2f * (frand / scale)));
-                fpWeightsOut.write(cast(char*)&temp, 1, 4);
-        	}
-        }
-    
-        for(int i=0; i<nOutputNodes; i++){
-        	for(int j=0; j<nHiddenNodes + 1; j++) {
-                frand = (cast(float)std::randomShort());
-        		temp = wmax * (1.0f - 2f * frand / scale);
-                fpWeightsOut.write(cast(char*)&temp, 1, 4);
-        	}
-        }
-        fpWeightsOut.close();
-        std::println("Weights written to file ", outputFile);
+        ~dh;
     }
+}
+
+void main {
+    int inputSize = 2;
+    int hiddenSize = 8;
+    int outputSize = 1;
+    double learningRate = 0.1d;
+
+    // Example input and target sequences
+    std::vector<std::vector<double>> inputs = std::vector<std::vector<double>>();
+    std::vector<std::vector<double>> targets = std::vector<std::vector<double>>();
+
+    inputs.add(std::vector<double>([0.0d, 0.0d]));
+    targets.add(std::vector<double>([0.0d]));
+
+    inputs.add(std::vector<double>([0.0d, 0.1d]));
+    targets.add(std::vector<double>([0.1d]));
+
+    inputs.add(std::vector<double>([0.2d, 0.1d]));
+    targets.add(std::vector<double>([0.3d]));
+
+    inputs.add(std::vector<double>([0.2d, 0.2d]));
+    targets.add(std::vector<double>([0.4d]));
+
+    RNN rnn = RNN(inputSize, hiddenSize, outputSize, learningRate);
+    rnn.train(inputs, targets, 100000);
+
+    std::println("Write two numbers (from 0 to 1): ");
+    double first; double second;
+    std::input(&first, &second);
+
+    std::vector<double> prediction = rnn.forward(std::vector<double>([first, second]));
+    std::print("Input: ", first, " ", second);
+    std::print("\nPrediction: ");
+    foreach(val; prediction) std::print(val, " ");
+    std::println("\n");
+    ~prediction;
 }

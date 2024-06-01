@@ -1,0 +1,36 @@
+import <std/io> <std/vector>
+
+int[256] ctoiTable;
+char[256] itocTable;
+
+int vocabSize = 0;
+
+std::string readFile(char* fname) {
+    std::file fp = std::file(fname);
+    fp.open("r");
+        fp.seek(0, libc::seekEnd);
+        int fsize = libc::ftell(fp._file);
+        fp.seek(0, libc::seekSet);
+        char* buffer = std::malloc(fsize);
+        fp.read(buffer, 1, fsize);
+    fp.close();
+    std::string str = buffer;
+    std::free(buffer);
+} => str;
+
+void createMappings(std::string text) {
+    int index = 0;
+    for(int i=0; i<text.length; i++) {
+        if(ctoiTable[cast(int)(text.data[i])] == 0) {
+            ctoiTable[cast(int)(text.data[i])] = index;
+            itocTable[index] = text.data[i];
+            index += 1;
+            vocabSize += 1;
+        }
+    }
+}
+
+std::vector<int> textToIndices(std::string text) {
+    std::vector<int> indices = std::vector<int>();
+    for(int i=0; i<text.length; i++) indices.add(ctoiTable[cast(int)(text.data[i])]);
+} => indices;
