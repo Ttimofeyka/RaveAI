@@ -93,12 +93,22 @@ struct RNN {
             }
         }
         ~dh;
+        ~lossGradient;
+    }
+
+    void ~this {
+        ~(this.Wxh);
+        ~(this.Whh);
+        ~(this.Why);
+        ~(this.bh);
+        ~(this.by);
+        ~(this.hPrev);
     }
 }
 
 void main {
     int inputSize = 2;
-    int hiddenSize = 8;
+    int hiddenSize = 16;
     int outputSize = 1;
     double learningRate = 0.1d;
 
@@ -112,6 +122,9 @@ void main {
     inputs.add(std::vector<double>([0.0d, 0.1d]));
     targets.add(std::vector<double>([0.1d]));
 
+    inputs.add(std::vector<double>([0.1d, 0.1d]));
+    targets.add(std::vector<double>([0.2d]));
+
     inputs.add(std::vector<double>([0.2d, 0.1d]));
     targets.add(std::vector<double>([0.3d]));
 
@@ -119,10 +132,11 @@ void main {
     targets.add(std::vector<double>([0.4d]));
 
     RNN rnn = RNN(inputSize, hiddenSize, outputSize, learningRate);
-    rnn.train(inputs, targets, 100000);
+    rnn.train(inputs, targets, 250000);
 
     std::println("Write two numbers (from 0 to 1): ");
-    double first; double second;
+    double first;
+    double second;
     std::input(&first, &second);
 
     std::vector<double> prediction = rnn.forward(std::vector<double>([first, second]));
@@ -130,5 +144,9 @@ void main {
     std::print("\nPrediction: ");
     foreach(val; prediction) std::print(val, " ");
     std::println("\n");
+
+    ~rnn;
     ~prediction;
+    ~inputs;
+    ~targets;
 }
