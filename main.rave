@@ -1,5 +1,7 @@
 import <std/io> <std/matrix> <std/math> <std/random>
 
+alias logPer = 5000;
+
 struct RNN {
     int inputSize;
     int hiddenSize;
@@ -92,9 +94,83 @@ struct RNN {
                 }
                 ~prediction;
             }
+
+            if((epoch % logPer) == 0) std::println("Done epoch ", epoch, "/", epochs);
         }
         ~dh;
         ~lossGradient;
+    }
+
+    void saveWeights(char* filename) {
+        std::file f = std::file(filename);
+        f.open("w");
+        double temp;
+        for(int i=0; i<(this.Wxh.rows * this.Wxh.columns); i++) {
+            temp = this.Wxh.data[i];
+            std::fprintln(f, temp);
+        }
+
+        for(int i=0; i<(this.Whh.rows * this.Whh.columns); i++) {
+            temp = this.Whh.data[i];
+            std::fprintln(f, temp);
+        }
+
+        for(int i=0; i<(this.Why.rows * this.Why.columns); i++) {
+            temp = this.Why.data[i];
+            std::fprintln(f, temp);
+        }
+
+        for(int i=0; i<this.bh.length; i++) {
+            temp = this.bh[i];
+            std::fprintln(f, temp);
+        }
+
+        for(int i=0; i<this.by.length; i++) {
+            temp = this.by[i];
+            std::fprintln(f, temp);
+        }
+
+        for(int i=0; i<this.hPrev.length; i++) {
+            temp = this.hPrev[i];
+            std::fprintln(f, temp);
+        }
+        f.close();
+    }
+
+    void loadWeights(char* filename) {
+        std::file f = std::file(filename);
+        f.open("r");
+        double temp;
+        for(int i=0; i<(this.Wxh.rows * this.Wxh.columns); i++) {
+            std::finput(f, &temp);
+            this.Wxh.data[i] = temp;
+        }
+
+        for(int i=0; i<(this.Whh.rows * this.Whh.columns); i++) {
+            std::finput(f, &temp);
+            this.Whh.data[i] = temp;
+        }
+
+        for(int i=0; i<(this.Why.rows * this.Why.columns); i++) {
+            std::finput(f, &temp);
+            this.Why.data[i] = temp;
+        }
+
+        for(int i=0; i<this.bh.length; i++) {
+            std::finput(f, &temp);
+            this.bh[i] = temp;
+        }
+
+        for(int i=0; i<this.by.length; i++) {
+            std::finput(f, &temp);
+            this.by[i] = temp;
+        }
+
+        for(int i=0; i<this.hPrev.length; i++) {
+            std::finput(f, &temp);
+            this.hPrev[i] = temp;
+        }
+        f.close();
     }
 
     void ~this {
@@ -108,43 +184,41 @@ struct RNN {
 }
 
 void main {
-    int inputSize = 2;
-    int hiddenSize = 16;
+    int inputSize = 1;
+    int hiddenSize = 8;
     int outputSize = 1;
-    double learningRate = 0.1d;
+    double learningRate = 0.01d;
 
     // Example input and target sequences
     std::vector<std::vector<double>> inputs = std::vector<std::vector<double>>();
     std::vector<std::vector<double>> targets = std::vector<std::vector<double>>();
 
-    inputs.add(std::vector<double>([0.0d, 0.0d]));
-    targets.add(std::vector<double>([0.0d]));
-
-    inputs.add(std::vector<double>([0.0d, 0.1d]));
+    inputs.add(std::vector<double>([0d]));
     targets.add(std::vector<double>([0.1d]));
 
-    inputs.add(std::vector<double>([0.1d, 0.1d]));
-    targets.add(std::vector<double>([0.2d]));
+    for(int i=10; i>1; i--) {
+        inputs.add(std::vector<double>([(1d / i)]));
+        targets.add(std::vector<double>([(1d / i) + 0.1d]));
+    }
 
-    inputs.add(std::vector<double>([0.2d, 0.1d]));
-    targets.add(std::vector<double>([0.3d]));
-
-    inputs.add(std::vector<double>([0.2d, 0.2d]));
-    targets.add(std::vector<double>([0.4d]));
+    std::println("Inputs length: ", inputs.length, "\nTargets length: ", targets.length);
 
     RNN rnn = RNN(inputSize, hiddenSize, outputSize, learningRate);
+    //rnn.loadWeights("weights");
     rnn.train(inputs, targets, 100000);
 
-    std::println("Write two numbers (from 0 to 1): ");
-    double first;
-    double second;
-    std::input(&first, &second);
+    std::println("Write number (from 0 to 1): ");
+    double number;
+    std::input(&number);
 
-    std::vector<double> prediction = rnn.forward(std::vector<double>([first, second]));
-    std::print("Input: ", first, " ", second);
+    std::vector<double> prediction = rnn.forward(std::vector<double>([number]));
+    std::print("Input: ", number);
     std::print("\nPrediction: ");
     foreach(val; prediction) std::print(val, " ");
     std::println("\n");
+
+    rnn.saveWeights("weights");
+    std::println("Saved!");
 
     ~rnn;
     ~prediction;
