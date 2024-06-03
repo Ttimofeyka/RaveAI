@@ -92,7 +92,7 @@ struct RNN {
                 ~prediction;
             }
 
-            if((epoch % logPer) == 0) std::println("Done epoch ", epoch, "/", epochs);
+            if((epoch % logPer) == 0) std::println("Done epoch ", epoch + logPer, "/", epochs);
         }
         ~dh;
         ~lossGradient;
