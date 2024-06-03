@@ -15,6 +15,8 @@ struct RNN {
 
     std::vector<double> hPrev;
 
+    std::vector<double> h;
+
     double learningRate;
 
     RNN this(int inputSize, int hiddenSize, int outputSize, double learningRate) {
@@ -39,28 +41,28 @@ struct RNN {
 
         this.hPrev = std::vector<double>(hiddenSize);
         this.hPrev.zero();
+
+        this.h = std::vector<double>(this.hiddenSize);
     } => this;
 
     std::vector<double> forward(std::vector<double> input) {
-        std::vector<double> h = std::vector<double>(this.hiddenSize);
-        h.zero();
-
-        for(int i=0; i<this.hiddenSize; i++) {
-            for(int j=0; j<this.inputSize; j++) h[i] += this.Wxh.get(i, j) * input[j];
-            h[i] += this.bh[i];
-            h[i] = std::math::tanh(h[i] + this.Whh.get(i, i) * this.hPrev[i]); // Recurrent connection
-        }
+        this.h.zero();
 
         std::vector<double> output = std::vector<double>(this.outputSize);
         output.zero();
 
+        for(int i=0; i<this.hiddenSize; i++) {
+            for(int j=0; j<this.inputSize; j++) this.h[i] += this.Wxh.get(i, j) * input[j];
+            this.h[i] += this.bh[i];
+            this.h[i] = std::math::tanh(this.h[i] + this.Whh.get(i, i) * this.hPrev[i]); // Recurrent connection
+        }
+
         for(int i=0; i<this.outputSize; i++) {
-            for(int j=0; j<this.hiddenSize; j++) output[i] += this.Why.get(i, j) * h[j];
+            for(int j=0; j<this.hiddenSize; j++) output[i] += this.Why.get(i, j) * this.h[j];
             output[i] += this.by[i];
         }
 
-        for(int i=0; i<this.hiddenSize; i++) this.hPrev[i] = h[i];
-        ~h;
+        for(int i=0; i<this.hiddenSize; i++) this.hPrev[i] = this.h[i];
         std::math::softmax(output);
     } => output;
 
@@ -104,36 +106,12 @@ struct RNN {
     void saveWeights(char* filename) {
         std::file f = std::file(filename);
         f.open("w");
-        double temp;
-        for(int i=0; i<(this.Wxh.rows * this.Wxh.columns); i++) {
-            temp = this.Wxh.data[i];
-            std::fprintln(f, temp);
-        }
-
-        for(int i=0; i<(this.Whh.rows * this.Whh.columns); i++) {
-            temp = this.Whh.data[i];
-            std::fprintln(f, temp);
-        }
-
-        for(int i=0; i<(this.Why.rows * this.Why.columns); i++) {
-            temp = this.Why.data[i];
-            std::fprintln(f, temp);
-        }
-
-        for(int i=0; i<this.bh.length; i++) {
-            temp = this.bh[i];
-            std::fprintln(f, temp);
-        }
-
-        for(int i=0; i<this.by.length; i++) {
-            temp = this.by[i];
-            std::fprintln(f, temp);
-        }
-
-        for(int i=0; i<this.hPrev.length; i++) {
-            temp = this.hPrev[i];
-            std::fprintln(f, temp);
-        }
+        for(int i=0; i<(this.Wxh.rows * this.Wxh.columns); i++) std::fprintln(f, this.Wxh.data[i]);
+        for(int i=0; i<(this.Whh.rows * this.Whh.columns); i++) std::fprintln(f, this.Whh.data[i]);
+        for(int i=0; i<(this.Why.rows * this.Why.columns); i++) std::fprintln(f, this.Why.data[i]);
+        for(int i=0; i<this.bh.length; i++) std::fprintln(f, this.bh[i]);
+        for(int i=0; i<this.by.length; i++) std::fprintln(f, this.by[i]);
+        for(int i=0; i<this.hPrev.length; i++) std::fprintln(f, this.hPrev[i]);
         f.close();
     }
 
@@ -180,12 +158,13 @@ struct RNN {
         ~(this.bh);
         ~(this.by);
         ~(this.hPrev);
+        ~(this.h);
     }
 }
 
 void main {
     int inputSize = 1;
-    int hiddenSize = 8;
+    int hiddenSize = 64;
     int outputSize = 1;
     double learningRate = 0.01d;
 

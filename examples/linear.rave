@@ -1,0 +1,17 @@
+import "../layers/linear"
+
+void main {
+    Linear layer = Linear(3, 3);
+
+    // Example input and target
+    std::vector<double> input = std::vector<double>([1d, 2d, 3d]);
+    std::vector<double> target = std::vector<double>([0.5d, 1d, 1.5d]);
+
+    // Training
+    layer.train(input, target, 0.01d, 1000, 100);
+
+    // Final output after training
+    std::vector<double> output = layer.forward(input);
+    std::println("Final output:");
+    foreach(e; output) std::println(e);
+}

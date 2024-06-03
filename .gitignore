@@ -3,3 +3,5 @@ init_weights
 test
 final_weights
 weights
+linear
+*.exe
