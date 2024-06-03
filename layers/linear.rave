@@ -59,7 +59,7 @@ struct Linear {
 
             if((logPer != -1) && ((epoch % logPer) == 0)) {
                 double loss = mseLoss(output, target);
-                std::println("Epoch ", epoch, "/", epochs, " completed. Loss: ", loss);
+                std::println("Epoch ", epoch + logPer, "/", epochs, " completed. Loss: ", loss);
             }
             ~output;
             ~error;
