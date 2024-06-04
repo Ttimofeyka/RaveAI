@@ -38,9 +38,7 @@ struct Linear {
         std::vector<double> output = std::vector<double>(this.outputDim);
         for(int i=0; i<this.outputDim; i++) {
             output[i] = this.biases[i];
-            for(int j=0; j<this.inputDim; j++) {
-                output[i] += input[j] * this.weights.get(i, j);
-            }
+            for(int j=0; j<this.inputDim; j++) output[i] += input[j] * this.weights.get(i, j);
         }
     } => output;
 

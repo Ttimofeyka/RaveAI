@@ -21,7 +21,7 @@ std::string readFile(char* fname) {
 void createMappings(std::string text) {
     int index = 0;
     for(int i=0; i<text.length; i++) {
-        if(ctoiTable[cast(int)(text.data[i])] == 0) {
+        if((text.data[i] != '\0') && (ctoiTable[cast(int)(text.data[i])] == 0)) {
             ctoiTable[cast(int)(text.data[i])] = index;
             itocTable[index] = text.data[i];
             index += 1;
