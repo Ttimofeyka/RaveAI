@@ -1,62 +1,62 @@
 import <std/io> <std/matrix> <std/math> <std/random>
 
 // Mean Squared Error loss function and its derivative
-double mseLoss(std::vector<double> predicted, std::vector<double> target) {
-    double loss = 0.0d;
-    double diff = 0.0d;
+float mseLoss(std::vector<float> predicted, std::vector<float> target) {
+    float loss = 0.0f;
+    float diff = 0.0f;
     for(int i=0; i<predicted.length; i++) {
         diff = predicted[i] - target[i];
         loss += diff * diff;
     }
 } => loss / predicted.length;
 
-std::vector<double> mseLossDerivative(std::vector<double> predicted, std::vector<double> target) {
-    std::vector<double> grad = std::vector<double>(predicted.length);
+std::vector<float> mseLossDerivative(std::vector<float> predicted, std::vector<float> target) {
+    std::vector<float> grad = std::vector<float>(predicted.length);
     for(int i=0; i<predicted.length; i++) grad[i] = 2 * (predicted[i] - target[i]) / predicted.length;
 } => grad;
 
 struct Linear {
     int inputDim;
     int outputDim;
-    std::matrix<double> weights;
-    std::vector<double> biases;
+    std::matrix<float> weights;
+    std::vector<float> biases;
 
     Linear this(int inputDim, int outputDim) {
         Linear this;
         this.inputDim = inputDim;
         this.outputDim = outputDim;
-        this.weights = std::matrix<double>(inputDim, outputDim);
-        this.biases = std::vector<double>(outputDim);
+        this.weights = std::matrix<float>(inputDim, outputDim);
+        this.biases = std::vector<float>(outputDim);
         
         for(int i=0; i<outputDim; i++) {
-            for(int j=0; j<inputDim; j++) this.weights.set(i, j, ((cast(double)std::randomShort()) / 32767d));
-            this.biases[i] = ((cast(double)std::randomShort()) / 32767d);
+            for(int j=0; j<inputDim; j++) this.weights.set(i, j, ((cast(float)std::randomShort()) / 32767f));
+            this.biases[i] = ((cast(float)std::randomShort()) / 32767f);
         }
     } => this;
 
-    std::vector<double> forward(std::vector<double> input) {
-        std::vector<double> output = std::vector<double>(this.outputDim);
-        for(int i=0; i<this.outputDim; i++) {
-            output[i] = this.biases[i];
-            for(int j=0; j<this.inputDim; j++) output[i] += input[j] * this.weights.get(i, j);
+    std::vector<float> forward(std::vector<float> input) {
+        std::vector<float> output = std::vector<float>(outputDim);
+        for(int i=0; i<outputDim; i++) {
+            output[i] = biases[i];
+            for(int j=0; j<inputDim; j++) output[i] += input[j] * weights.get(i, j);
         }
     } => output;
 
-    void train(std::vector<double> input, std::vector<double> target, double learningRate, int epochs, int logPer) {
-        std::vector<double> error;
-        std::vector<double> output;
+    void train(std::vector<float> input, std::vector<float> target, float learningRate, int epochs, int logPer) {
+        std::vector<float> error;
+        std::vector<float> output;
 
         for(int epoch=0; epoch<epochs; epoch++) {
             output = this.forward(input);
             error = mseLossDerivative(output, target);
             // Update weights and biases
-            for(int i=0; i<this.outputDim; i++) {
-                this.biases[i] -= learningRate * error[i];
-                for(int j=0; j<this.inputDim; j++) this.weights.set(i, j, this.weights.get(i, j) - learningRate * error[i] * input[j]);
+            for(int i=0; i<outputDim; i++) {
+                biases[i] -= learningRate * error[i];
+                for(int j=0; j<inputDim; j++) weights.set(i, j, weights.get(i, j) - learningRate * error[i] * input[j]);
             }
 
             if((logPer != -1) && ((epoch % logPer) == 0)) {
-                double loss = mseLoss(output, target);
+                float loss = mseLoss(output, target);
                 std::println("Epoch ", epoch + logPer, "/", epochs, " completed. Loss: ", loss);
             }
             ~output;
