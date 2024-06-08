@@ -2,41 +2,45 @@ import <std/io> <std/matrix> <std/math> <std/random>
 import "layers/rnn"
 
 void main {
-    int inputSize = 1;
+    int inputSize = 4;
     int hiddenSize = 64;
     int outputSize = 1;
-    double learningRate = 0.01d;
+    float learningRate = 0.01f;
 
     // Example input and target sequences
-    std::vector<std::vector<double>> inputs = std::vector<std::vector<double>>();
-    std::vector<std::vector<double>> targets = std::vector<std::vector<double>>();
+    std::vector<std::vector<float>> inputs = std::vector<std::vector<float>>();
+    std::vector<std::vector<float>> targets = std::vector<std::vector<float>>();
 
-    inputs.add(std::vector<double>([0d]));
-    targets.add(std::vector<double>([0.1d]));
+    inputs.add(std::vector<float>([0.5f, 0.8f, 0.1f, 0.2f]));
+    targets.add(std::vector<float>([0.025f]));
 
-    for(int i=10; i>1; i--) {
-        inputs.add(std::vector<double>([(1d / i)]));
-        targets.add(std::vector<double>([(1d / i) + 0.1d]));
-    }
+    inputs.add(std::vector<float>([0.25f, 0.8f, 0.1f, 0.2f]));
+    targets.add(std::vector<float>([0.0015f]));
+
+    inputs.add(std::vector<float>([0.4f, 0.6f, 0.05f, 0.1f]));
+    targets.add(std::vector<float>([0.05f]));
+
+    inputs.add(std::vector<float>([0.5f, 0.1f, 0f, 0.05]));
+    targets.add(std::vector<float>([0.1f]));
+
+    inputs.add(std::vector<float>([0.5f, 0.8f, 0.1f, 0.8f]));
+    targets.add(std::vector<float>([0.0005f]));
 
     std::println("Inputs length: ", inputs.length, "\nTargets length: ", targets.length);
 
     RNN rnn = RNN(inputSize, hiddenSize, outputSize);
-    //rnn.loadWeights("weights");
     rnn.train(inputs, targets, learningRate, 100000, 5000);
 
-    std::println("Write number (from 0 to 1): ");
-    double number;
-    std::input(&number);
+    std::println("Write four number (from 0 to 1): ");
+    float one; float two; float three; float four;
+    std::input(&one, &two, &three, &four);
 
-    std::vector<double> prediction = rnn.forward(std::vector<double>([number]));
-    std::print("Input: ", number);
+    std::vector<float> prediction = std::vector<float>(outputSize);
+    rnn.forward(prediction, std::vector<float>([one, two, three, four]));
+    std::print("Input: ", one, " ", two, " ", three, " ", four);
     std::print("\nPrediction: ");
     foreach(val; prediction) std::print(val, " ");
     std::println("\n");
-
-    rnn.saveWeights("weights");
-    std::println("Saved!");
 
     ~rnn;
     ~prediction;
