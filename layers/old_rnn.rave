@@ -1,0 +1,115 @@
+import <std/io> <std/matrix> <std/math> <std/random>
+import "utils/mseloss"
+
+struct RNN {
+    int inputSize;
+    int hiddenSize;
+    int outputSize;
+
+    std::matrix<float> Wxh;
+    std::matrix<float> Whh;
+    std::matrix<float> Why;
+    std::vector<float> bh;
+    std::vector<float> by;
+
+    std::vector<float> hPrev;
+
+    std::vector<float> h;
+
+    RNN this(int inputSize, int hiddenSize, int outputSize) {
+        RNN this;
+        this.inputSize = inputSize;
+        this.hiddenSize = hiddenSize;
+        this.outputSize = outputSize;
+        this.Wxh = std::matrix<float>(hiddenSize, inputSize);
+        this.Whh = std::matrix<float>(hiddenSize, hiddenSize);
+        this.Why = std::matrix<float>(hiddenSize, outputSize);
+
+        for(int i=0; i<(hiddenSize * inputSize); i++) this.Wxh.data[i] = ((cast(float)std::randomShort()) / 32767f);
+        for(int i=0; i<(hiddenSize * hiddenSize); i++) this.Whh.data[i] = ((cast(float)std::randomShort()) / 32767f);
+        for(int i=0; i<(hiddenSize * outputSize); i++) this.Why.data[i] = ((cast(float)std::randomShort()) / 32767f);
+
+        this.bh = std::vector<float>();
+        this.hPrev = std::vector<float>();
+        this.h = std::vector<float>();
+        this.by = std::vector<float>();
+
+        for(int i=0; i<hiddenSize; i++) {
+            this.bh.add(0f);
+            this.hPrev.add(0f);
+            this.h.add(0f);
+        }
+
+        for(int i=0; i<outputSize; i++) this.by.add(0f);
+    } => this;
+
+    std::vector<float> forward(std::vector<float> output, std::vector<float> input) {
+        h.zero();
+        output.zero();
+
+        for(int i=0; i<hiddenSize; i++) {
+            for(int j=0; j<inputSize; j++) h[i] += Wxh.get(i, j) * input[j];
+            h[i] += bh[i];
+            h[i] = std::math::tanh(h[i] + Whh.get(i, i) * hPrev[i]); // Recurrent connection
+        }
+
+        for(int i=0; i<outputSize; i++) {
+            for(int j=0; j<hiddenSize; j++) output[i] += Why.get(i, j) * h[j];
+            output[i] += by[i];
+        }
+
+        for(int i=0; i<hiddenSize; i++) hPrev[i] = h[i];
+        std::math::softmax(output);
+    } => output;
+
+    void train(std::vector<std::vector<float>> inputs, std::vector<std::vector<float>> targets, float learningRate, int epochs, int logPer) {
+        std::vector<float> dh = std::vector<float>();
+        for(int i=0; i<hiddenSize; i++) dh.add(0f);
+        std::vector<float> lossGradient = std::vector<float>();
+        std::vector<float> prediction = std::vector<float>();
+        for(int i=0; i<outputSize; i++) prediction.add(0f);
+        float loss = 0f;
+
+        for(int epoch=0; epoch<epochs; epoch++) {
+            for(int i=0; i<inputs.length; i++) {
+                this.forward(prediction, inputs[i]);
+                loss += mseLoss(prediction, targets[i]);
+
+                lossGradient.length = 0;
+                for(int j=0; j<prediction.length; j++) lossGradient.add(prediction[j] - targets[i].data[j]);
+
+                // Backpropagation through time (BPTT)
+                dh.zero();
+                for(int j=0; j<outputSize; j++) {
+                    for(int k=0; k<hiddenSize; k++) {
+                        Why.set(j, k, Why.get(j, k) - learningRate * lossGradient[j] * hPrev[k]);
+                        dh[k] += Why.get(j, k) * lossGradient[j];
+                    }
+                    by[j] -= learningRate * lossGradient[j]; // SGD
+                }
+
+                for(int j=0; j<hiddenSize; j++) {
+                    dh[j] *= (1f - hPrev[j] * hPrev[j]); // Derivative of tanh
+                    for(int k=0; k<inputSize; k++) Wxh.set(j, k, Wxh.get(j, k) - learningRate * dh[j] * inputs[i].data[k]);
+                    for(int k=0; k<hiddenSize; k++) Whh.set(j, k, Whh.get(j, k) - learningRate * dh[j] * hPrev[k]);
+                    bh[j] -= learningRate * dh[j]; // SGD
+                }
+            }
+
+            if((logPer != -1) && ((epoch % logPer) == 0)) std::println("Epoch ", epoch + logPer, "/", epochs, " completed. Loss: ", loss);
+            loss = 0f;
+        }
+        ~dh;
+        ~lossGradient;
+    }
+
+    void ~this {
+        ~(this.Wxh);
+        ~(this.Whh);
+        ~(this.Why);
+        ~(this.bh);
+        ~(this.by);
+        ~(this.hPrev);
+        ~(this.h);
+    }
+}

@@ -1,0 +1,16 @@
+import <std/io> <std/matrix> <std/math> <std/random>
+
+// Mean Squared Error loss function and its derivative
+float mseLoss(std::vector<float> predicted, std::vector<float> target) {
+    float loss = 0f;
+    float diff = 0f;
+    for(int i=0; i<predicted.length; i++) {
+        if(predicted[i] < 0f) predicted[i] = 0f;
+        diff = predicted[i] - target[i];
+        loss += (diff * diff);
+    }
+} => loss / predicted.length;
+
+void mseLossDerivative(std::vector<float> predicted, std::vector<float> target, std::vector<float> grad) {
+    for(int i=0; i<predicted.length; i++) grad[i] = 2 * (predicted[i] - target[i]) / predicted.length;
+}

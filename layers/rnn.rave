@@ -1,107 +1,99 @@
 import <std/io> <std/matrix> <std/math> <std/random>
+import "utils/mseloss"
+import "layers/linear"
 
 struct RNN {
     int inputSize;
     int hiddenSize;
     int outputSize;
 
-    std::matrix<float> Wxh;
-    std::matrix<float> Whh;
-    std::matrix<float> Why;
-    std::vector<float> bh;
-    std::vector<float> by;
+    Linear i2h;
+    Linear h2h;
+    Linear h2o;
 
     std::vector<float> hPrev;
-
     std::vector<float> h;
+    std::vector<float> prediction;
+    std::vector<float> dh;
+    std::vector<float> lossGradient;
 
-    RNN this(int inputSize, int hiddenSize, int outputSize) {
+    RNN this(int in, int hdn, int out) {
         RNN this;
-        this.inputSize = inputSize;
-        this.hiddenSize = hiddenSize;
-        this.outputSize = outputSize;
-        this.Wxh = std::matrix<float>(hiddenSize, inputSize);
-        this.Whh = std::matrix<float>(hiddenSize, hiddenSize);
-        this.Why = std::matrix<float>(hiddenSize, outputSize);
 
-        for(int i=0; i<(hiddenSize * inputSize); i++) this.Wxh.data[i] = ((cast(float)std::randomShort()) / 32767f);
-        for(int i=0; i<(hiddenSize * hiddenSize); i++) this.Whh.data[i] = ((cast(float)std::randomShort()) / 32767f);
-        for(int i=0; i<(hiddenSize * outputSize); i++) this.Why.data[i] = ((cast(float)std::randomShort()) / 32767f);
+        this.inputSize = in;
+        this.hiddenSize = hdn;
+        this.outputSize = out;
 
-        this.bh = std::vector<float>(hiddenSize);
-        this.bh.zero();
-    
-        this.by = std::vector<float>(outputSize);
-        this.by.zero();
+        this.i2h = Linear(in, hdn, false); // INPUT -> HIDDEN (no biases)
+        this.h2h = Linear(hdn, hdn, true); // HIDDEN -> HIDDEN (with biases)
+        this.h2o = Linear(hdn, out, true); // HIDDEN -> OUTPUT (with biases)
 
-        this.hPrev = std::vector<float>(hiddenSize);
+        this.hPrev = std::vector<float>(hdn);
         this.hPrev.zero();
-
-        this.h = std::vector<float>(this.hiddenSize);
+        this.h = std::vector<float>(hdn);
+        this.prediction = std::vector<float>(out);
+        this.dh = std::vector<float>(hdn);
+        this.lossGradient = std::vector<float>(out);
     } => this;
 
-    std::vector<float> forward(std::vector<float> output, std::vector<float> input) {
+    void forward(std::vector<float> input, std::vector<float> output) {
+        // Clear the buffers
         h.zero();
         output.zero();
+        
+        // Make forward linear layer
+        i2h.forward(input, h); // INPUT -> HIDDEN
 
-        for(int i=0; i<hiddenSize; i++) {
-            for(int j=0; j<inputSize; j++) h[i] += Wxh.get(i, j) * input[j];
-            h[i] += bh[i];
-            h[i] = std::math::tanh(h[i] + Whh.get(i, i) * hPrev[i]); // Recurrent connection
-        }
+        // Use tanh function on hidden bias, i2h output and mul of hidden weights and hPrev
+        for(int i=0; i<hiddenSize; i++) h[i] = std::math::tanh(h2h.biases[i] + h[i] + (h2h.weights.get(i, i) * hPrev[i])); // HIDDEN -> HIDDEN (tanh)
 
-        for(int i=0; i<outputSize; i++) {
-            for(int j=0; j<hiddenSize; j++) output[i] += Why.get(i, j) * h[j];
-            output[i] += by[i];
-        }
+        // Make forward linear layer
+        h2o.forward(h, output); // HIDDEN -> OUTPUT
+        for(int i=0; i<hiddenSize; i++) hPrev[i] = h[i]; // Saving current hidden state as previous
 
-        for(int i=0; i<hiddenSize; i++) hPrev[i] = h[i];
+        // Use softmax on output vector
         std::math::softmax(output);
-    } => output;
-
-    void train(std::vector<std::vector<float>> inputs, std::vector<std::vector<float>> targets, float learningRate, int epochs, int logPer) {
-        std::vector<float> dh = std::vector<float>(hiddenSize);
-        std::vector<float> lossGradient = std::vector<float>();
-        std::vector<float> prediction = std::vector<float>(outputSize);
-
-        for(int epoch=0; epoch<epochs; epoch++) {
-            for(int i=0; i<inputs.length; i++) {
-                this.forward(prediction, inputs[i]);
-
-                lossGradient.length = 0;
-                for(int j=0; j<prediction.length; j++) lossGradient.add(prediction[j] - targets[i].data[j]);
-
-                // Backpropagation through time (BPTT)
-                dh.zero();
-                for(int j=0; j<outputSize; j++) {
-                    for(int k=0; k<hiddenSize; k++) {
-                        Why.set(j, k, Why.get(j, k) - learningRate * lossGradient[j] * hPrev[k]);
-                        dh[k] += Why.get(j, k) * lossGradient[j];
-                    }
-                    by[j] -= learningRate * lossGradient[j]; // SGD
-                }
-
-                for(int j=0; j<hiddenSize; j++) {
-                    dh[j] *= (1f - hPrev[j] * hPrev[j]); // Derivative of tanh
-                    for(int k=0; k<inputSize; k++) Wxh.set(j, k, Wxh.get(j, k) - learningRate * dh[j] * inputs[i].data[k]);
-                    for(int k=0; k<hiddenSize; k++) Whh.set(j, k, Whh.get(j, k) - learningRate * dh[j] * hPrev[k]);
-                    bh[j] -= learningRate * dh[j]; // SGD
-                }
-            }
-
-            if((epoch % logPer) == 0) std::println("Done epoch ", epoch + logPer, "/", epochs);
-        }
-        ~dh;
-        ~lossGradient;
     }
 
+    float backward(std::vector<std::vector<float>> inputs, std::vector<std::vector<float>> targets, float learningRate) {
+        float loss = 0f;
+
+        prediction.zero();
+
+        for(int i=0; i<inputs.length; i++) {
+            this.forward(inputs[i], prediction);
+            loss += mseLoss(prediction, targets[i]);
+
+            lossGradient.length = 0;
+            for(int j=0; j<prediction.length; j++) lossGradient.add(prediction[j] - targets[i].data[j]);
+
+            // Backpropagation through time (BPTT)
+            dh.zero();
+            for(int j=0; j<outputSize; j++) {
+                for(int k=0; k<hiddenSize; k++) {
+                    h2o.weights.set(j, k, h2o.weights.get(j, k) - (learningRate * lossGradient[j] * hPrev[k]));
+                    dh[k] += h2o.weights.get(j, k) * lossGradient[j];
+                }
+                h2o.biases[j] -= learningRate * lossGradient[j]; // SGD
+            }
+
+            for(int j=0; j<hiddenSize; j++) {
+                dh[j] *= std::math::dtanh(hPrev[j]);
+                for(int k=0; k<inputSize; k++) i2h.weights.set(j, k, i2h.weights.get(j, k) - (learningRate * dh[j] * inputs[i].data[k]));
+                for(int k=0; k<hiddenSize; k++) h2h.weights.set(j, k, h2h.weights.get(j, k) - (learningRate * dh[j] * hPrev[k]));
+                h2h.biases[j] -= learningRate * dh[j]; // SGD
+            }
+        }
+    } => loss;
+
     void ~this {
-        ~(this.Wxh);
-        ~(this.Whh);
-        ~(this.Why);
-        ~(this.bh);
-        ~(this.by);
+        ~(this.i2h);
+        ~(this.h2h);
+        ~(this.h2o);
         ~(this.hPrev);
         ~(this.h);
+        ~(this.prediction);
+        ~(this.dh);
+        ~(this.lossGradient);
     }
 }
