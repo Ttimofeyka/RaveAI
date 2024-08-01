@@ -1,7 +1,35 @@
 import <std/io> <std/matrix> <std/math> <std/random>
-import "layers/rnn"
-import "dataset"
+import "layers/linear"
 
 void main {
-    
+    int inSize = 2;
+    int outSize = 1;
+    LinearLayer layer = LinearLayer(inSize, outSize);
+
+    float[] input = [0.2f, 0.2f];
+    float[] target = [0.4f];
+
+    // Training loop
+    int epochs = 1000;
+    float learningRate = 0.01f;
+    for(int epoch=0; epoch<epochs; epoch++) {
+        // Forward pass
+        layer.forward(&input);
+
+        // Compute loss (simple squared error)
+        float loss = (layer.output[0] - target[0]) * (layer.output[0] - target[0]);
+
+        // Backward pass
+        float[] doutput = [2 * (layer.output[0] - target[0])];
+        layer.backward(&doutput, learningRate);
+
+        // Print loss for monitoring
+        if((epoch % 100) == 0) std::println("Epoch ", epoch, ": Loss = ", loss);
+    }
+
+    // Check output after training
+    layer.forward(&input);
+    std::println("Output after training: ", layer.output[0]);
+
+    ~layer;
 }

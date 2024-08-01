@@ -1,0 +1,4 @@
+namespace layers {
+    alias Linear = 0;
+    alias RNN = 1;
+}

@@ -1,40 +1,81 @@
 import <std/io> <std/matrix> <std/math> <std/random>
-import "utils/mseloss"
 
+struct LinearLayer {
+    int in;
+    int out;
 
-struct Linear {
-    int inputDim;
-    int outputDim;
-    std::matrix<float> weights;
-    std::vector<float> biases;
-    bool hasBiases;
+    float* weights;
+    float* dweights;
 
-    Linear this(int inputDim, int outputDim, bool hasBiases) {
-        Linear this;
-        this.inputDim = inputDim;
-        this.outputDim = outputDim;
-        this.hasBiases = hasBiases;
-        this.weights = std::matrix<float>(inputDim, outputDim);
+    float* bias;
+    float* dbias;
 
-        if(hasBiases) {
-            this.biases = std::vector<float>(outputDim);
-            this.biases.zero();
+    float* input;
+    float* dinput;
+
+    float* output;
+
+    LinearLayer this(int in, int out) {
+        LinearLayer this;
+
+        this.in = in;
+        this.out = out;
+
+        this.weights = std::new<float>(in * out);
+        this.dweights = std::new<float>(in * out);
+
+        this.bias = std::new<float>(out);
+        this.dbias = std::new<float>(out);
+
+        this.input = std::new<float>(in);
+        this.dinput = std::new<float>(in);
+
+        this.output = std::new<float>(out);
+
+        for(int i=0; i<out; i++) {
+            this.bias[i] = (cast(float)std::randomShort()) / 32767f;
+            this.dbias[i] = 0f;
+            this.output[i] = 0f;
+            for(int j=0; j<in; j++) {
+                this.weights[j] = (cast(float)std::randomShort()) / 32767f;
+                this.dweights[j] = 0f;
+            }
         }
-        
-        for(int i=0; i<outputDim; i++) {
-            for(int j=0; j<inputDim; j++) this.weights.set(i, j, ((cast(float)std::randomShort()) / 32767f));
+
+        for(int i=0; i<in; i++) {
+            this.input[i] = 0f;
+            this.dinput[i] = 0f;
         }
     } => this;
 
-    void forward(std::vector<float> input, std::vector<float> output) {
-        for(int i=0; i<outputDim; i++) {
-            if(hasBiases) output[i] += biases[i];
-            for(int j=0; j<inputDim; j++) output[i] += input[j] * weights.get(i, j);
-        }
+    void forward(float* input) {
+        for(int i=0; i<in; i++) this.input[i] = input[i];
+
+        std::matrix::multiply(weights, this.input, output, out, in, 1);
+        std::matrix::add(output, bias, output, out, 1);
+    }
+
+    void backward(float* doutput, float learningRate) {
+        for(int i=0; i<out; i++) dbias[i] = doutput[i];
+
+        std::matrix::transpose(input, dinput, in, 1);
+        std::matrix::multiply(doutput, dinput, dweights, out, 1, in);
+        std::matrix::multiply(weights, output, dinput, in, out, 1);
+
+        // Update weights and bias
+        std::matrix::scale(dweights, dweights, out, in, -learningRate);
+        std::matrix::add(weights, dweights, weights, out, in);
+        std::matrix::scale(dbias, dbias, out, 1, -learningRate);
+        std::matrix::add(bias, dbias, bias, out, 1);
     }
 
     void ~this {
-        ~(this.weights);
-        ~(this.biases);
+        if(this.weights != null) {std::free(cast(void*)(this.weights)); this.weights = null;}
+        if(this.dweights != null) {std::free(cast(void*)(this.dweights)); this.dweights = null;}
+        if(this.bias != null) {std::free(cast(void*)(this.bias)); this.bias = null;}
+        if(this.dbias != null) {std::free(cast(void*)(this.dbias)); this.dbias = null;}
+        if(this.input != null) {std::free(cast(void*)(this.input)); this.input = null;}
+        if(this.dinput != null) {std::free(cast(void*)(this.dinput)); this.dinput = null;}
+        // if(this.output != null) {std::free(cast(void*)(this.output)); this.output = null;}
     }
 }
