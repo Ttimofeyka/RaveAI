@@ -1,5 +1,5 @@
 import <std/io> <std/matrix> <std/math> <std/random>
-import "layers/linear"
+import "layers/linear" "utils/mseloss"
 
 void main {
     int inSize = 2;
@@ -17,10 +17,13 @@ void main {
         layer.forward(&input);
 
         // Compute loss (simple squared error)
-        float loss = (layer.output[0] - target[0]) * (layer.output[0] - target[0]);
+        float loss = mseLoss(layer.output, &target, outSize);
+
+        // Compute grad
+        float[1] doutput;
+        mseLossD(layer.output, &target, &doutput, outSize);
 
         // Backward pass
-        float[] doutput = [2 * (layer.output[0] - target[0])];
         layer.backward(&doutput, learningRate);
 
         // Print loss for monitoring
