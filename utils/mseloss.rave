@@ -7,8 +7,8 @@ float mseLoss(float* output, float* target, int size) {
         float error = output[i] - target[i];
         loss += (error * error);
     }
-} => loss;
+} => loss / size;
 
 void mseLossD(float* output, float* target, float* doutput, int size) {
-    for(int i=0; i<size; i++) doutput[i] = 2 * (output[i] - target[i]);
+    for(int i=0; i<size; i++) doutput[i] = 2 * (output[i] - target[i]) / size;
 }

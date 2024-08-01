@@ -36,6 +36,7 @@ struct LinearLayer {
             this.bias[i] = (cast(float)std::randomShort()) / 32767f;
             this.dbias[i] = 0f;
             this.output[i] = 0f;
+
             for(int j=0; j<in; j++) {
                 this.weights[j] = (cast(float)std::randomShort()) / 32767f;
                 this.dweights[j] = 0f;

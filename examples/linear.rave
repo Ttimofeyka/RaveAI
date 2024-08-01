@@ -1,0 +1,40 @@
+// Copy this to main.rave if you want to test it
+
+import <std/io> <std/matrix> <std/math> <std/random>
+import "layers/linear" "utils/mseloss"
+
+void main {
+    int inSize = 2;
+    int outSize = 1;
+    LinearLayer layer = LinearLayer(inSize, outSize);
+
+    float[] input = [0.2f, 0.2f];
+    float[] target = [0.4f];
+
+    // Training loop
+    int epochs = 1000;
+    float learningRate = 0.01f;
+    for(int epoch=0; epoch<epochs; epoch++) {
+        // Forward pass
+        layer.forward(&input);
+
+        // Compute loss (simple squared error)
+        float loss = mseLoss(layer.output, &target, outSize);
+
+        // Compute grad
+        float[1] doutput;
+        mseLossD(layer.output, &target, &doutput, outSize);
+
+        // Backward pass
+        layer.backward(&doutput, learningRate);
+
+        // Print loss for monitoring
+        if((epoch % 100) == 0) std::println("Epoch ", epoch, ": Loss = ", loss);
+    }
+
+    // Check output after training
+    layer.forward(&input);
+    std::println("Output after training: ", layer.output[0]);
+
+    ~layer;
+}
