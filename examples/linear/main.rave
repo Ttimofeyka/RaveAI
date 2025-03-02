@@ -1,0 +1,50 @@
+import <std/io> <std/vector>
+import "../../raveai/layers"
+
+void main {
+    // f(x) = x
+
+    std::vector<float> input = std::vector<float>([1f, 2f, 3f, 4f, 5f, 6f]);
+    std::vector<float> target = std::vector<float>([1f, 2f, 3f, 4f, 5f, 6f]);
+
+    rai::LinearLayer layer = rai::LinearLayer(1, 1);
+    defer ~layer;
+
+    // Gradient data for training
+    float* gradOutput = std::new<float>(layer.outSize);
+    defer std::free(gradOutput);
+
+    // Training
+    for(int epoch=0; epoch<100; epoch++) {
+        float total = 0f;
+
+        for(int sample=0; sample<input.length; sample++) {
+            // Forward
+            layer.forward(&input[sample]);
+            
+            // Loss
+            float loss = rai::mseLoss(layer.output, &target[sample], layer.outSize);
+            total += loss;
+
+            // Backward
+            rai::mseLossGrad(layer.output, &target[sample], gradOutput, layer.outSize);
+            layer.backward(gradOutput, 0.001f);
+        }
+
+        std::println("Epoch ", epoch, ", loss: ", total);
+    }
+
+    std::println("Done!");
+
+    // Inferencing
+    while(true) {
+        std::print("Enter a number: ");
+        
+        float number;
+        std::input(&number);
+
+        layer.forward(&number);
+
+        std::println("Answer is ", layer.output[0]);
+    }
+}

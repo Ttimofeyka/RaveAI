@@ -1,0 +1,62 @@
+/*
+This Source Code Form is subject to the terms of the Mozilla
+Public License, v. 2.0. If a copy of the MPL was not distributed
+with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
+*/
+
+import <std/math> <std/random>
+import "utils"
+
+namespace rai {
+    namespace LayerType {
+        alias Linear = 0;
+    }
+
+    struct LinearLayer {
+        float* input;
+        float* weights;
+        float* output;
+
+        int inSize;
+        int wSize;
+        int outSize;
+
+        rai::LinearLayer this(int inSize, int outSize) {
+            rai::LinearLayer this;
+
+            this.inSize = inSize;
+            this.outSize = outSize;
+            this.wSize = inSize * outSize;
+
+            this.output = std::new<float>(outSize);
+            this.weights = std::new<float>(this.wSize);
+
+            for(int i=0; i<(this.wSize); i++) this.weights[i] = std::randomInt(-1000, 1000) / 1000f;
+        } => this;
+
+        void forward(float* input) {
+            this.input = input;
+
+            for(int i=0; i<outSize; i++) {
+                output[i] = 0f;
+
+                for(int j=0; j<inSize; j++) output[i] += input[j] * weights[(i * inSize) + j];
+            }
+        }
+
+        void backward(float* predicted, float lRate) {
+            for(int i=0; i<outSize; i++) {
+                for(int j=0; j<inSize; j++) weights[(i * inSize) + j] -= lRate * predicted[i] * input[j];
+            }
+        }
+
+        void ~this {
+            std::free(this.output);
+            std::free(this.weights);
+
+            this.input = null;
+            this.output = null;
+            this.weights = null;
+        }
+    }
+}

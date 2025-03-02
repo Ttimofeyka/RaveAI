@@ -1,0 +1,18 @@
+/*
+This Source Code Form is subject to the terms of the Mozilla
+Public License, v. 2.0. If a copy of the MPL was not distributed
+with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
+*/
+
+import <std/math>
+
+namespace rai {
+    float mseLoss(float* yTrue, float* yPred, int size) {
+        for(int i=0; i<size; i++) return += (yTrue[i] - yPred[i]) * (yTrue[i] - yPred[i]);
+        return /= size;
+    }
+
+    void mseLossGrad(float* predicted, float* target, float* gradient, int size) {
+        for(int i=0; i<size; i++) gradient[i] = (2f * (predicted[i] - target[i])) / cast(float)size;
+    }
+}
