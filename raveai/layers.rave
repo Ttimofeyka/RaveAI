@@ -11,6 +11,7 @@ namespace rai {
     namespace LayerType {
         alias Linear = 0;
         alias Activation = 1;
+        alias Dropout = 2;
     }
 
     namespace ActivationType {
@@ -126,6 +127,42 @@ namespace rai {
             this.input = null;
             this.output = null;
             this.grad = null;
+        }
+    }
+
+    struct DropoutLayer {
+        int size;
+        float prob; // 0-1
+        float* output;
+
+        rai::DropoutLayer this(int size, float prob) {
+            rai::DropoutLayer this;
+
+            this.size = size;
+            this.prob = prob;
+            this.output = std::new<float>(size);
+        } => this;
+
+        void forward(float* input, bool isTraining) {
+            for(int i=0; i<size; i++) {
+                if(isTraining) {
+                    if((std::randomInt(0, 100) / 100f) <= prob) output[i] = 0f;
+                    else output[i] = input[i];
+                }
+                else {
+                    for(int i=0; i<size; i++) output[i] = input[i];
+                }
+            }
+        }
+
+        void backward(float* predicted) {
+            for(int i=0; i<size; i++) output[i] *= predicted[i];
+        }
+
+        void ~this {
+            std::free(this.output);
+
+            this.output = null;
         }
     }
 }

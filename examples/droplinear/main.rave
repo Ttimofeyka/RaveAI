@@ -1,0 +1,65 @@
+import <std/io> <std/vector>
+import "../../raveai/layers"
+
+void main {
+    // f(x) = x
+
+    std::vector<float> input = std::vector<float>([1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f, 10f]);
+    std::vector<float> target = std::vector<float>([2f, 4f, 6f, 8f, 10f, 12f, 14f, 16f, 18f, 20f]);
+
+    rai::LinearLayer layer1 = rai::LinearLayer(1, 1);
+    layer1.randomize(0, 1000);
+    defer ~layer1;
+
+    rai::DropoutLayer droplayer = rai::DropoutLayer(1, 0.01f);
+    defer ~droplayer;
+
+    rai::LinearLayer layer2 = rai::LinearLayer(1, 1);
+    layer2.randomize(0, 1000);
+    defer ~layer2;
+
+    // Linear -> Dropout (0.01) -> Linear
+
+    float* lastGrad = std::new<float>(layer2.outSize);
+    defer std::free(lastGrad);
+
+    // Training
+    for(int epoch=0; epoch<100; epoch++) {
+        float total = 0f;
+
+        for(int sample=0; sample<input.length; sample++) {
+            // Forward
+            layer1.forward(&input[sample]);
+            droplayer.forward(layer1.output, true);
+            layer2.forward(droplayer.output);
+            
+            // Loss
+            float loss = rai::mseLoss(layer2.output, &target[sample], layer2.outSize);
+            total += loss;
+
+            // Backward
+            rai::mseLossGrad(layer2.output, &target[sample], lastGrad, layer2.outSize);
+            layer2.backward(lastGrad, 0.001f);
+            droplayer.backward(layer2.grad);
+            layer1.backward(droplayer.output, 0.001f);
+        }
+
+        std::println("Epoch ", epoch, ", loss: ", total);
+    }
+
+    std::println("Done!");
+
+    // Inferencing
+    while(true) {
+        std::print("Enter a number: ");
+        
+        float number;
+        std::input(&number);
+
+        layer1.forward(&number);
+        droplayer.forward(layer1.output, false);
+        layer2.forward(droplayer.output);
+
+        std::println("Answer is ", layer2.output[0]);
+    }
+}
