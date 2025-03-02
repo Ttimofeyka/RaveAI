@@ -20,7 +20,7 @@ void main {
     for(int i=0; i<countOfZeros; i++) target.add(std::vector<float>([1f, 0f]));
     for(int i=0; i<countOfOnes; i++) target.add(std::vector<float>([0f, 1f]));
 
-    rai::LinearLayer layer = rai::LinearLayer(257, 2);
+    rai::LinearLayer layer = rai::LinearLayer(256, 2);
     layer.randomize(-1000, 1000);
     defer ~layer;
 
