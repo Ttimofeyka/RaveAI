@@ -1,0 +1,94 @@
+import <std/io> <std/vector>
+
+std::vector<std::file> getDataset0 {
+    return = std::vector<std::file>();
+
+    return.add(std::file("./examples/numberlinear/images/0/0.pbm"));
+    return.add(std::file("./examples/numberlinear/images/0/1.pbm"));
+    return.add(std::file("./examples/numberlinear/images/0/2.pbm"));
+    return.add(std::file("./examples/numberlinear/images/0/3.pbm"));
+    return.add(std::file("./examples/numberlinear/images/0/4.pbm"));
+    return.add(std::file("./examples/numberlinear/images/0/5.pbm"));
+    return.add(std::file("./examples/numberlinear/images/0/6.pbm"));
+    return.add(std::file("./examples/numberlinear/images/0/7.pbm"));
+    return.add(std::file("./examples/numberlinear/images/0/8.pbm"));
+    return.add(std::file("./examples/numberlinear/images/0/9.pbm"));
+    return.add(std::file("./examples/numberlinear/images/0/10.pbm"));
+    return.add(std::file("./examples/numberlinear/images/0/11.pbm"));
+    return.add(std::file("./examples/numberlinear/images/0/12.pbm"));
+    return.add(std::file("./examples/numberlinear/images/0/13.pbm"));
+    return.add(std::file("./examples/numberlinear/images/0/14.pbm"));
+    return.add(std::file("./examples/numberlinear/images/0/15.pbm"));
+    return.add(std::file("./examples/numberlinear/images/0/16.pbm"));
+    return.add(std::file("./examples/numberlinear/images/0/17.pbm"));
+    return.add(std::file("./examples/numberlinear/images/0/18.pbm"));
+    return.add(std::file("./examples/numberlinear/images/0/19.pbm"));
+}
+
+std::vector<std::file> getDataset1 {
+    return = std::vector<std::file>();
+
+    return.add(std::file("./examples/numberlinear/images/1/0.pbm"));
+    return.add(std::file("./examples/numberlinear/images/1/1.pbm"));
+    return.add(std::file("./examples/numberlinear/images/1/2.pbm"));
+    return.add(std::file("./examples/numberlinear/images/1/3.pbm"));
+    return.add(std::file("./examples/numberlinear/images/1/4.pbm"));
+    return.add(std::file("./examples/numberlinear/images/1/5.pbm"));
+    return.add(std::file("./examples/numberlinear/images/1/6.pbm"));
+    return.add(std::file("./examples/numberlinear/images/1/7.pbm"));
+    return.add(std::file("./examples/numberlinear/images/1/8.pbm"));
+    return.add(std::file("./examples/numberlinear/images/1/9.pbm"));
+    return.add(std::file("./examples/numberlinear/images/1/10.pbm"));
+    return.add(std::file("./examples/numberlinear/images/1/11.pbm"));
+    return.add(std::file("./examples/numberlinear/images/1/12.pbm"));
+    return.add(std::file("./examples/numberlinear/images/1/13.pbm"));
+    return.add(std::file("./examples/numberlinear/images/1/14.pbm"));
+    return.add(std::file("./examples/numberlinear/images/1/15.pbm"));
+    return.add(std::file("./examples/numberlinear/images/1/16.pbm"));
+    return.add(std::file("./examples/numberlinear/images/1/17.pbm"));
+    return.add(std::file("./examples/numberlinear/images/1/18.pbm"));
+    return.add(std::file("./examples/numberlinear/images/1/19.pbm"));
+}
+
+std::vector<float> loadOne(std::file* file) {
+    return = std::vector<float>();
+
+    std::println("LOADING ", file.name);
+
+    file.open("r");
+
+    char c = file.getc();
+    while(c != '\n') c = file.getc();
+    c = file.getc();
+    while(c != '\n') c = file.getc();
+
+    c = file.getc();
+    
+    // Parsing
+    while((c != 0) && (c != -1)) {
+        return.add(cast(float)(c - '0'));
+        c = file.getc();
+
+        while((c == ' ') || (c == '\n')) {
+            c = file.getc();
+            if((c == 0) || (c == -1)) break;
+        }
+    }
+
+    file.close();
+}
+
+void appendDataset(std::vector<std::vector<float>>* output, int n) {
+    std::vector<std::file> files;
+
+    if(n == 0) files = getDataset0();
+    else files = getDataset1();
+
+    for(int i=0; i<files.length; i++) {
+        std::file file = files[i];
+
+        output.add(loadOne(&file));
+    }
+
+    ~files;
+}

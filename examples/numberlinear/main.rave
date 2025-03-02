@@ -1,0 +1,67 @@
+import <std/io> <std/vector>
+import "../../raveai/layers" "load"
+
+// MUST BE RUNNED FROM THE MAIN DIRECTORY!
+
+void main {
+    // 0 or 1 detection
+
+    // Loading datasets with 16x16 size in .pbm format
+    std::vector<std::vector<float>> input = std::vector<std::vector<float>>();
+
+    appendDataset(&input, 0);
+    appendDataset(&input, 1);
+
+    std::vector<std::vector<float>> target = std::vector<std::vector<float>>();
+
+    int countOfZeros = 20;
+    int countOfOnes = 20;
+
+    for(int i=0; i<countOfZeros; i++) target.add(std::vector<float>([1f, 0f]));
+    for(int i=0; i<countOfOnes; i++) target.add(std::vector<float>([0f, 1f]));
+
+    rai::LinearLayer layer = rai::LinearLayer(257, 2);
+    layer.randomize(-1000, 1000);
+    defer ~layer;
+
+    // Training
+    for(int epoch=0; epoch<2000; epoch++) {
+        float total = 0f;
+
+        for(int sample=0; sample<input.length; sample++) {
+            // Forward
+            layer.forward(input[sample].data);
+            
+            // Loss
+            float loss = rai::mseLoss(layer.output, target[sample].data, layer.outSize);
+            total += loss;
+
+            // Backward
+            rai::mseLossGrad(layer.output, target[sample].data, layer.grad, layer.outSize);
+            layer.backward(layer.grad, 0.001f);
+        }
+
+        std::println("Epoch ", epoch, ", loss: ", total);
+    }
+
+    std::println("Done!");
+
+    while(true) {
+        std::print("Write the path to file: ");
+
+        std::string path = "";
+        std::input(&path);
+
+        std::file file = std::file(path);
+
+        std::vector<float> userInput = loadOne(&file);
+        
+        layer.forward(userInput.data);
+
+        if(layer.output[0] >= layer.output[1]) std::println("Answer: 0");
+        else std::println("Answer: 1");
+
+        ~path;
+        ~userInput;
+    }
+}

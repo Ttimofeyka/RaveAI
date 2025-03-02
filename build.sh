@@ -1,2 +1,2 @@
 #!/bin/sh
-rave ./examples/droplinear/main.rave -o droplinear -Ofast
+rave ./examples/numberlinear/main.rave -o numberlinear -Ofast
