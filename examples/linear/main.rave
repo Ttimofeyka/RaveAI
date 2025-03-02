@@ -8,11 +8,8 @@ void main {
     std::vector<float> target = std::vector<float>([1f, 2f, 3f, 4f, 5f, 6f]);
 
     rai::LinearLayer layer = rai::LinearLayer(1, 1);
+    layer.randomize(-1000, 1000);
     defer ~layer;
-
-    // Gradient data for training
-    float* gradOutput = std::new<float>(layer.outSize);
-    defer std::free(gradOutput);
 
     // Training
     for(int epoch=0; epoch<100; epoch++) {
@@ -27,8 +24,8 @@ void main {
             total += loss;
 
             // Backward
-            rai::mseLossGrad(layer.output, &target[sample], gradOutput, layer.outSize);
-            layer.backward(gradOutput, 0.001f);
+            rai::mseLossGrad(layer.output, &target[sample], layer.grad, layer.outSize);
+            layer.backward(layer.grad, 0.001f);
         }
 
         std::println("Epoch ", epoch, ", loss: ", total);

@@ -4,18 +4,26 @@ Public License, v. 2.0. If a copy of the MPL was not distributed
 with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
-import <std/math> <std/random>
+import <std/math> <std/random> <std/io>
 import "utils"
 
 namespace rai {
     namespace LayerType {
         alias Linear = 0;
+        alias Activation = 1;
+    }
+
+    namespace ActivationType {
+        alias ReLU = 0;
+        alias Sigmoid = 1;
+        alias Tanh = 2;
     }
 
     struct LinearLayer {
         float* input;
         float* weights;
         float* output;
+        float* grad;
 
         int inSize;
         int wSize;
@@ -30,9 +38,12 @@ namespace rai {
 
             this.output = std::new<float>(outSize);
             this.weights = std::new<float>(this.wSize);
-
-            for(int i=0; i<(this.wSize); i++) this.weights[i] = std::randomInt(-1000, 1000) / 1000f;
+            this.grad = std::new<float>(outSize);
         } => this;
+
+        void randomize(int min, int max) {
+            for(int i=0; i<wSize; i++) weights[i] = std::randomInt(min, max) / 1000f;
+        }
 
         void forward(float* input) {
             this.input = input;
@@ -46,17 +57,75 @@ namespace rai {
 
         void backward(float* predicted, float lRate) {
             for(int i=0; i<outSize; i++) {
-                for(int j=0; j<inSize; j++) weights[(i * inSize) + j] -= lRate * predicted[i] * input[j];
+                for(int j=0; j<inSize; j++) {
+                    weights[(i * inSize) + j] -= lRate * predicted[i] * input[j];
+                }
             }
         }
 
         void ~this {
             std::free(this.output);
             std::free(this.weights);
+            std::free(this.grad);
 
             this.input = null;
             this.output = null;
             this.weights = null;
+            this.grad = null;
+        }
+    }
+
+    struct ActivationLayer {
+        int size;
+        float* input;
+        float* output;
+        float* grad;
+        int type;
+
+        rai::ActivationLayer this(int size, int type) {
+            rai::ActivationLayer this;
+
+            this.size = size;
+            this.type = type;
+
+            this.output = std::new<float>(size);
+            this.grad = std::new<float>(size);
+        } => this;
+
+        void forward(float* input) {
+            this.input = input;
+
+            for(int i=0; i<size; i++) {
+                switch(type) {
+                    case(rai::ActivationType::ReLU) output[i] = std::math::relu(input[i]);
+                    case(rai::ActivationType::Sigmoid) output[i] = std::math::sigmoid(input[i]);
+                    case(rai::ActivationType::Tanh) output[i] = std::math::tanh(input[i]);
+                    default output[i] = input[i];
+                }
+            }
+        }
+
+        void backward(float* predicted) {
+            for(int i=0; i<size; i++) {
+                switch(type) {
+                    case(rai::ActivationType::ReLU) grad[i] = predicted[i] * std::math::drelu(output[i]);
+                    case(rai::ActivationType::Sigmoid) grad[i] = predicted[i] * std::math::dsigmoid(output[i]);
+                    case(rai::ActivationType::Tanh) {
+                        float value = std::math::tanh(output[i]);
+                        grad[i] = predicted[i] * (1f - (value * value));
+                    }
+                    default grad[i] = predicted[i] * output[i];
+                }
+            }
+        }
+
+        void ~this {
+            std::free(this.output);
+            std::free(this.grad);
+
+            this.input = null;
+            this.output = null;
+            this.grad = null;
         }
     }
 }

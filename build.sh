@@ -1,2 +1,2 @@
 #!/bin/sh
-rave ./examples/linear/main.rave -o linear -Ofast
+rave ./examples/actlinear/main.rave -o actlinear -Ofast
