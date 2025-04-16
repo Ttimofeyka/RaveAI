@@ -4,7 +4,7 @@ Public License, v. 2.0. If a copy of the MPL was not distributed
 with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
-import <std/math> <std/random> <std/io> <std/matrix>
+import <std/math> <std/random> <std/io> <std/blas>
 import "utils"
 
 namespace rai {
@@ -49,12 +49,12 @@ namespace rai {
         void forward(float* input) {
             this.input = input;
 
-            std::matrix::vscale(weights, inSize, outSize, input, output);
+            std::blas::vecmatmul<float>(inSize, outSize, input, weights, output);
         }
 
         void backward(float* predicted, float lRate) {
             for(int i=0; i<outSize; i++) {
-                for(int j=0; j<inSize; j++) weights[(i * inSize) + j] -= lRate * predicted[i] * input[j];
+                std::blas::axpy<float>(inSize, -lRate * predicted[i], input, &weights[i * inSize]);
             }
         }
 
