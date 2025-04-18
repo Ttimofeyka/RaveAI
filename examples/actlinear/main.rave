@@ -24,7 +24,7 @@ void main {
     defer std::free(lastGrad);
 
     // Training
-    for(int epoch=0; epoch<100; epoch++) {
+    for(int epoch=0; epoch<1000; epoch++) {
         float total = 0f;
 
         for(int sample=0; sample<input.length; sample++) {
