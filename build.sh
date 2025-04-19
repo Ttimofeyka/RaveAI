@@ -1,2 +1,2 @@
 #!/bin/sh
-rave ./examples/numberlinear/main.rave -o ./examples/numberlinear/numberlinear -Ofast
+rave ./examples/mingru/main.rave -o ./examples/mingru/mingru -Ofast

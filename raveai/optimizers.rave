@@ -1,0 +1,62 @@
+import <std/vector> <std/math>
+
+namespace rai {
+    struct OptPair {
+        uint size;
+        float* pointer;
+        float* dpointer;
+    }
+
+    struct OptCache {
+        uint size;
+        float* pointer;
+    }
+
+    struct RMSProp {
+        std::vector<rai::OptPair> pairs;
+        std::vector<rai::OptCache> caches;
+        float lRate;
+        float decay;
+        float epsilon;
+
+        rai::RMSProp this(std::vector<rai::OptPair> pairs, float lRate, float decay, float epsilon) {
+            rai::RMSProp this;
+
+            this.lRate = lRate;
+            this.decay = decay;
+            this.epsilon = epsilon;
+
+            this.pairs = pairs;
+            this.caches = std::vector<rai::OptCache>();
+
+            for(uint i=0; i<pairs.length; i++) {
+                rai::OptCache cache = rai::OptCache{pairs[i].size, std::anew<float>(16, pairs[i].size)};
+                std::memset(cache.pointer, 0, cache.size);
+                this.caches.add(cache);
+            }
+        } => this;
+
+        void update {
+            for(uint i=0; i<pairs.length; i++) {
+                for(uint j=0; j<pairs[i].size; j++) {
+                    caches[i].pointer[j] = decay * caches[i].pointer[j]
+                        + (1f - decay) * pairs[i].dpointer[j] * pairs[i].dpointer[j];
+                    
+                    pairs[i].pointer[j] -= lRate * pairs[i].dpointer[j] / (std::math::sqrt(pairs[i].dpointer[j]) + epsilon);
+                }
+            }
+        }
+
+        void ~this {
+            ~(this.pairs);
+            ~(this.caches);
+        }
+    }
+
+    /*for(int i = 0; i < gru->hidden_size * gru->input_size; i++) {
+        opt->W_z_cache[i] = opt->decay_rate * opt->W_z_cache[i] 
+                          + (1 - opt->decay_rate) * gru->dW_z[i] * gru->dW_z[i];
+        gru->W_z[i] -= opt->learning_rate * gru->dW_z[i] 
+                     / (sqrtf(opt->W_z_cache[i]) + opt->epsilon);
+    }*/
+}
