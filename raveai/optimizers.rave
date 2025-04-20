@@ -39,10 +39,9 @@ namespace rai {
         void update {
             for(uint i=0; i<pairs.length; i++) {
                 for(uint j=0; j<pairs[i].size; j++) {
-                    caches[i].pointer[j] = decay * caches[i].pointer[j]
-                        + (1f - decay) * pairs[i].dpointer[j] * pairs[i].dpointer[j];
-                    
-                    pairs[i].pointer[j] -= lRate * pairs[i].dpointer[j] / (std::math::sqrt(pairs[i].dpointer[j]) + epsilon);
+                    float grad = pairs[i].dpointer[j];
+                    caches[i].pointer[j] = decay * caches[i].pointer[j] + (1f - decay) * grad * grad;
+                    pairs[i].pointer[j] -= lRate * grad / (std::math::sqrt(caches[i].pointer[j]) + epsilon);
                 }
             }
         }

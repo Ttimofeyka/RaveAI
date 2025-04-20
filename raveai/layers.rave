@@ -72,50 +72,40 @@ namespace rai {
     }
 
     struct MinGRULayer {
-        int inSize, outSize;
+        int inSize, outSize, wSize;
 
-        float* wZ, dWZ; // in -> hidden
-        float* wO, dWO; // hidden -> out
-        float* h; // Hidden
+        float* wZ, dWZ; // in * hidden
+        float* wO, dWO; // hidden * in
+        float* h; // Hidden    
 
-        float* hPrev; // Previous states
-        float* z; // Gate
-        float* hTilde; // Candidates
-
-        // TODO: is seq_len needed?        
+        float* grad; // Grad
 
         rai::MinGRULayer this(int inSize, int outSize) {
             rai::MinGRULayer this;
 
             this.inSize = inSize;
             this.outSize = outSize;
+            this.wSize = inSize * outSize;
 
-            this.wZ = std::anew<float>(16, inSize);
-            this.wO = std::anew<float>(16, outSize);
+            this.wZ = std::anew<float>(16, inSize * this.wSize);
+            this.wO = std::anew<float>(16, outSize * this.wSize);
             
-            this.dWZ = std::anew<float>(16, inSize);
-            this.dWO = std::anew<float>(16, outSize);
+            this.dWZ = std::anew<float>(16, inSize * this.wSize);
+            this.dWO = std::anew<float>(16, outSize * this.wSize);
 
             this.h = std::anew<float>(16, outSize);
-            this.z = std::anew<float>(16, inSize * outSize);
-            this.hTilde = std::anew<float>(16, inSize * outSize);
+            this.grad = std::anew<float>(16, outSize);
 
-            this.hPrev = null;
-
-            for(int i=0; i<inSize; i++) {
+            for(int i=0; i < inSize * outSize; i++) {
                 this.wZ[i] = 0f;
+                this.wO[i] = 0f;
                 this.dWZ[i] = 0f;
+                this.dWO[i] = 0f;
             }
 
             for(int i=0; i<outSize; i++) {
-                this.wO[i] = 0f;
-                this.dWO[i] = 0f;
                 this.h[i] = 0f;
-            }
-
-            for(int i=0; i < inSize * outSize; i++) {
-                this.z[i] = 0f;
-                this.hTilde[i] = 0f;
+                this.grad[i] = 0f;
             }
         } => this;
 
@@ -127,16 +117,68 @@ namespace rai {
         std::vector<rai::OptPair> parameters {return = std::vector<rai::OptPair>(); parameters(&return);}
 
         void randomize(int min, int max) {
-            for(int i=0; i<inSize; i++) wZ[i] = (std::randomInt(min, max) / 1000f);
-            for(int i=0; i<outSize; i++) wO[i] = (std::randomInt(min, max) / 1000f);
+            for(int i=0; i < inSize * outSize; i++) {
+                wZ[i] = (std::randomInt(min, max) / 1000f);
+                wO[i] = (std::randomInt(min, max) / 1000f);
+            }
         }
 
-        void forward(float* input) {
-            // TODO
+        void forward(float* input, float* hOut) {
+            float z, h_tilde, new_h;
+
+            for(int i=0; i<outSize; i++) {
+                /* Compute z_i = sigmoid( Wz[i,:] · x ) */
+                float dot_z = 0.0f;
+                for(int j=0; j<inSize; j++) dot_z += wZ[((i)*(inSize) + (j))] * input[j];
+                z = std::math::sigmoid(dot_z);
+
+                /* Compute h̃_i =     Wh[i,:] · x */
+                float dot_h = 0.0f;
+                for(int j=0; j<inSize; j++) dot_h += wO[((i)*(inSize) + (j))] * input[j];
+                h_tilde = dot_h;
+
+                /* New hidden */
+                new_h = (1f - z) * h[i] + z * h_tilde;
+                hOut[i] = new_h;
+            }
+
+            /* Copy new_h into h */
+            for(int i=0; i < outSize; i++) h[i] = hOut[i];
         }
 
-        void backward(float* predicted) {
-            // TODO
+        void backward(float* predicted, float* hPrev) {
+            /* Zero gradients */
+            for(int i=0; i<wSize; i++) {
+                dWZ[i] = 0f;
+                dWO[i] = 0f;
+            }
+    
+            /* Recompute forward intermediates for gradient */
+            for (int i=0; i<outSize; i++) {
+                /* z and its pre-activation */
+                float dot_z = 0f;
+                for(int j=0; j<inSize; j++) dot_z += wZ[((i)*(inSize) + (j))] * predicted[j];
+                float z = std::math::sigmoid(dot_z);
+
+                /* h̃ */
+                float dot_h = 0f;
+                for(int j=0; j<inSize; j++) dot_h += wO[((i)*(inSize) + (j))] * predicted[j];
+                float h_tilde = dot_h;
+
+                /* Gradient of loss wrt z and h_tilde */
+                float dL_dh = grad[i];
+                float dL_dz = dL_dh * (h_tilde - hPrev[i]);
+                float dL_dht = dL_dh * z;
+
+                /* dz/d(dot_z) = z*(1-z) */
+                float dL_ddot_z = dL_dz * z * (1f - z);
+
+                /* Accumulate gradWz and gradWh */
+                for (int j=0; j<inSize; j++) {
+                    dWZ[((i)*(inSize) + (j))] += dL_ddot_z * predicted[j];
+                    dWO[((i)*(inSize) + (j))] += dL_dht * predicted[j];
+                }
+            }
         }
 
         void ~this {

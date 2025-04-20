@@ -4,3 +4,4 @@ examples/droplinear/droplinear
 examples/numberlinear/numberlinear
 examples/mingru/mingru
 *.ll
+*.o

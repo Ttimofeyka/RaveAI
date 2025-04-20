@@ -2,40 +2,42 @@ import <std/io> <std/vector>
 import "../../raveai/layers" "../../raveai/optimizers"
 
 void main {
-    // f(x) = x
+    // f(x) = 2x
 
     std::vector<float> input = std::vector<float>([1f, 2f, 3f, 4f, 5f, 6f]);
-    std::vector<float> target = std::vector<float>([1f, 2f, 3f, 4f, 5f, 6f]);
+    std::vector<float> target = std::vector<float>([2f, 4f, 6f, 8f, 10f, 12f]);
 
     rai::MinGRULayer layer = rai::MinGRULayer(1, 1);
     layer.randomize(-1000, 1000);
     defer ~layer;
 
-    rai::RMSProp optimizer = rai::RMSProp(layer.parameters(), 0.001, 0.9, 0.9);
+    rai::RMSProp optimizer = rai::RMSProp(layer.parameters(), 0.001, 0.9, 0.01);
     defer ~optimizer;
 
-    /*
+    float hidden = 0f;
+
     // Training
     for(int epoch=0; epoch<100; epoch++) {
         float total = 0f;
 
         for(int sample=0; sample<input.length; sample++) {
             // Forward
-            layer.forward(&input[sample]);
+            layer.forward(&input[sample], &hidden);
             
             // Loss
-            float loss = rai::mseLoss(layer.output, &target[sample], layer.outSize);
-            total += loss;
+            total += rai::mseLossGrad(&input[sample], &target[sample], layer.grad, 1);
 
             // Backward
-            rai::mseLossGrad(layer.output, &target[sample], layer.grad, layer.outSize);
-            layer.backward(layer.grad, 0.001f);
+            layer.backward(&input[sample], &[0f]);
+            optimizer.update();
         }
 
         std::println("Epoch ", epoch, ", loss: ", total);
     }
 
     std::println("Done!");
+
+    hidden = 0f;
 
     // Inferencing
     while(true) {
@@ -44,9 +46,8 @@ void main {
         float number;
         std::input(&number);
 
-        layer.forward(&number);
+        layer.forward(&number, &hidden);
 
-        std::println("Answer is ", layer.output[0]);
+        std::println("Answer is ", hidden);
     }
-    */
 }
