@@ -124,61 +124,11 @@ namespace rai {
         }
 
         void forward(float* input, float* hOut) {
-            float z, h_tilde, new_h;
-
-            for(int i=0; i<outSize; i++) {
-                /* Compute z_i = sigmoid( Wz[i,:] · x ) */
-                float dot_z = 0.0f;
-                for(int j=0; j<inSize; j++) dot_z += wZ[((i)*(inSize) + (j))] * input[j];
-                z = std::math::sigmoid(dot_z);
-
-                /* Compute h̃_i =     Wh[i,:] · x */
-                float dot_h = 0.0f;
-                for(int j=0; j<inSize; j++) dot_h += wO[((i)*(inSize) + (j))] * input[j];
-                h_tilde = dot_h;
-
-                /* New hidden */
-                new_h = (1f - z) * h[i] + z * h_tilde;
-                hOut[i] = new_h;
-            }
-
-            /* Copy new_h into h */
-            for(int i=0; i < outSize; i++) h[i] = hOut[i];
+            
         }
 
         void backward(float* predicted, float* hPrev) {
-            /* Zero gradients */
-            for(int i=0; i<wSize; i++) {
-                dWZ[i] = 0f;
-                dWO[i] = 0f;
-            }
-    
-            /* Recompute forward intermediates for gradient */
-            for (int i=0; i<outSize; i++) {
-                /* z and its pre-activation */
-                float dot_z = 0f;
-                for(int j=0; j<inSize; j++) dot_z += wZ[((i)*(inSize) + (j))] * predicted[j];
-                float z = std::math::sigmoid(dot_z);
-
-                /* h̃ */
-                float dot_h = 0f;
-                for(int j=0; j<inSize; j++) dot_h += wO[((i)*(inSize) + (j))] * predicted[j];
-                float h_tilde = dot_h;
-
-                /* Gradient of loss wrt z and h_tilde */
-                float dL_dh = grad[i];
-                float dL_dz = dL_dh * (h_tilde - hPrev[i]);
-                float dL_dht = dL_dh * z;
-
-                /* dz/d(dot_z) = z*(1-z) */
-                float dL_ddot_z = dL_dz * z * (1f - z);
-
-                /* Accumulate gradWz and gradWh */
-                for (int j=0; j<inSize; j++) {
-                    dWZ[((i)*(inSize) + (j))] += dL_ddot_z * predicted[j];
-                    dWO[((i)*(inSize) + (j))] += dL_dht * predicted[j];
-                }
-            }
+            
         }
 
         void ~this {
