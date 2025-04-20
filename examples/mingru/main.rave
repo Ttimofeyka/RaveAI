@@ -4,15 +4,57 @@ import "../../raveai/layers" "../../raveai/optimizers"
 void main {
     // f(x) = 2x
 
-    std::vector<float> input = std::vector<float>([1f, 2f, 3f, 4f, 5f, 6f]);
-    std::vector<float> target = std::vector<float>([2f, 4f, 6f, 8f, 10f, 12f]);
+    std::vector<float> input = std::vector<float>([1f, 2f, 3f, 4f, 5f, 6f, 7f, 10f, 20f, 30f, 40f, 50f, 100f]);
+    std::vector<float> target = std::vector<float>([2f, 4f, 6f, 8f, 10f, 12f, 14f, 20f, 40f, 60f, 80f, 100f, 200f]);
 
     rai::MinGRULayer layer = rai::MinGRULayer(1, 1);
     layer.randomize(-1000, 1000);
     defer ~layer;
 
-    rai::RMSProp optimizer = rai::RMSProp(layer.parameters(), 0.001, 0.9, 0.01);
+    rai::SGD optimizer = rai::SGD(layer.parameters(), 0.03/*, 0.9, 0.01*/);
     defer ~optimizer;
 
-    
+    // Training
+    for(int epoch=0; epoch<10; epoch++) {
+        float total = 0f;
+
+        for(int sample=0; sample<input.length; sample++) {
+            for(int i = 0; i < layer.outSize; i++) {
+                layer.h_prev[i] = 0f;
+            }
+            // Forward
+            layer.forward(&input[sample]);
+
+            // Backward
+            total += rai::mseLossGrad(layer.h, &target[sample], layer.grad, layer.outSize);
+            layer.backward(&input[sample]);
+
+            for (int i = 0; i < layer.wSize; i++) {
+                std::println("layer.wZ[", i, "] (", layer.wZ[i], ") -= 0.03 * layer.dWZ[", i, "] (", layer.dWZ[i], ")");
+                layer.wZ[i] -= 0.03 * layer.dWZ[i];
+                std::println("layer.wO[", i, "] (", layer.wO[i], ") -= 0.03 * layer.dWO[", i, "] (", layer.dWO[i], ")");
+                layer.wO[i] -= 0.03 * layer.dWO[i];
+            }
+            // std::println("FIRST pointer was: ", ptoi(layer.wZ), "; ", ptoi(layer.dWZ));
+            // std::println("FIRST pointer was: ", ptoi(layer.wO), "; ", ptoi(layer.dWO));
+            // optimizer.update();
+        }
+
+        std::println("Epoch ", epoch, ", loss: ", total);
+    }
+
+    std::println("Done!");
+
+    // Inferencing
+    while(true) {
+        std::print("Enter a number: ");
+
+        float number;
+        std::input(&number);
+
+        layer.forward(&number);
+
+        layer.h_prev[0] = 0f;
+        std::println("Answer is ", layer.h[0]);
+    }
 }
