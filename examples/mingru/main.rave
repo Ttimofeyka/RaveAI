@@ -14,40 +14,5 @@ void main {
     rai::RMSProp optimizer = rai::RMSProp(layer.parameters(), 0.001, 0.9, 0.01);
     defer ~optimizer;
 
-    float hidden = 0f;
-
-    // Training
-    for(int epoch=0; epoch<100; epoch++) {
-        float total = 0f;
-
-        for(int sample=0; sample<input.length; sample++) {
-            // Forward
-            layer.forward(&input[sample], &hidden);
-            
-            // Loss
-            total += rai::mseLossGrad(&input[sample], &target[sample], layer.grad, 1);
-
-            // Backward
-            layer.backward(&input[sample], &[0f]);
-            optimizer.update();
-        }
-
-        std::println("Epoch ", epoch, ", loss: ", total);
-    }
-
-    std::println("Done!");
-
-    hidden = 0f;
-
-    // Inferencing
-    while(true) {
-        std::print("Enter a number: ");
-        
-        float number;
-        std::input(&number);
-
-        layer.forward(&number, &hidden);
-
-        std::println("Answer is ", hidden);
-    }
+    
 }
