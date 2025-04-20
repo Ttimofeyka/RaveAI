@@ -122,18 +122,14 @@ namespace rai {
         void parameters(std::vector<rai::OptPair>* buffer) {
             buffer.add(rai::OptPair{wSize, wZ, dWZ});
             buffer.add(rai::OptPair{wSize, wO, dWO});
-            for (int i = 0; i < buffer.length; i++) {
-                auto op = buffer.data[i];
-                std::println("PARAM ", op.size, " ", ptoi(op.pointer), " ", ptoi(op.dpointer));
-            }
         }
 
         std::vector<rai::OptPair> parameters {return = std::vector<rai::OptPair>(); parameters(&return);}
 
         void randomize(int min, int max) {
             for(int i=0; i < wSize; i++) {
-                wZ[i] = 0f; // (std::randomInt(min, max) / 1000f);
-                wO[i] = 0f; // (std::randomInt(min, max) / 1000f);
+                wZ[i] = (std::randomInt(min, max) / 1000f);
+                wO[i] = (std::randomInt(min, max) / 1000f);
             }
         }
 
@@ -142,21 +138,18 @@ namespace rai {
             for(int j = 0; j < outSize; j++) {
                 /* compute z[j] = sigmoid( Wz[j] · x ) */
                 float az = 0f;
-                for(int i = 0; i < inSize; i++) {
-                    az += wZ[j*inSize + i] * input[i];
-                }
+                for(int i = 0; i < inSize; i++) az += wZ[j * inSize + i] * input[i];
                 // std::println("az: ", az);
                 z[j] = std::math::sigmoid(az);
 
                 /* compute htilde[j] = Wh[j] · x */
                 float ah = 0f;
-                for(int i = 0; i < inSize; i++) {
-                    ah += wO[j*inSize + i] * input[i];
-                }
+                for(int i = 0; i < inSize; i++) ah += wO[j * inSize + i] * input[i];
                 // std::println("ah: ", ah);
                 htilde[j] = ah;
 
                 /* hidden update: h = (1 - z) * h_prev + z * htilde */
+                // std::println("h[", h, "] = (1 - ", z[j], ") * ", h_prev[j], " + ", z[j], " * ", htilde[j]);
                 h[j] = (1.0 - z[j]) * h_prev[j] + z[j] * htilde[j];
             }
             // printf("=== FORWARD END ===\n");
@@ -168,10 +161,13 @@ namespace rai {
                 dWZ[j] = 0f;
                 dWO[j] = 0f;
             }
+
             for(int j = 0; j < outSize; j++) {
                 float dh_j = grad[j];
 
                 /* gradients wrt htilde and z */
+                // std::println("d_htilde = ", dh_j, " * ", z[j]);
+                // std::println("d_z = ", dh_j, " * (", htilde[j], " - ", h_prev[j], ")");
                 float d_htilde = dh_j * z[j];
                 float d_z = dh_j * (htilde[j] - h_prev[j]);
 
@@ -181,8 +177,10 @@ namespace rai {
 
                 /* accumulate gradients into weight matrices */
                 for(int i = 0; i < inSize; i++) {
-                    dWO[j*inSize + i] += d_htilde * predicted[i];
-                    dWZ[j*inSize + i] += d_az     * predicted[i];
+                    // std::println("dWO[", j * inSize + i, "] += ", d_htilde, " * ", predicted[i]);
+                    // std::println("dWZ[", j * inSize + i, "] += ", d_az, " * ", predicted[i]);
+                    dWO[j * inSize + i] += d_htilde * predicted[i];
+                    dWZ[j * inSize + i] += d_az * predicted[i];
                 }
             }
             // printf("=== BACKWARD END ===\n");

@@ -40,7 +40,7 @@ namespace rai {
             for(uint i=0; i<pairs.length; i++) {
                 for(uint j=0; j<pairs.data[i].size; j++) {
                     float grad = pairs.data[i].dpointer[j];
-                    std::println("grad: ", grad);
+                    // std::println("grad: ", grad);
                     caches.data[i].pointer[j] = decay * caches.data[i].pointer[j] + (1f - decay) * grad * grad;
                     pairs.data[i].pointer[j] -= lRate * grad / (std::math::sqrt(caches.data[i].pointer[j]) + epsilon);
                 }
@@ -71,7 +71,7 @@ namespace rai {
                     rai::OptPair op = pairs.data[i];
                     auto pt = op.pointer;
                     auto dp = op.dpointer;
-                    std::println("layer.XX[", j, "] (", pt[j], ") -= 0.03 * layer.dXX[", j, "] (", dp[j], ")");
+                    // std::println("layer.XX[", j, "] (", pt[j], ") -= 0.03 * layer.dXX[", j, "] (", dp[j], ")");
                     pt[j] = pt[j] - lRate * dp[j];
                 }
             }

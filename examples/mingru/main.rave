@@ -2,26 +2,31 @@ import <std/io> <std/vector>
 import "../../raveai/layers" "../../raveai/optimizers"
 
 void main {
+    std::println(std::math::exp(-(101.677597f)));
     // f(x) = 2x
 
     std::vector<float> input = std::vector<float>([1f, 2f, 3f, 4f, 5f, 6f, 7f, 10f, 20f, 30f, 40f, 50f, 100f]);
     std::vector<float> target = std::vector<float>([2f, 4f, 6f, 8f, 10f, 12f, 14f, 20f, 40f, 60f, 80f, 100f, 200f]);
 
     rai::MinGRULayer layer = rai::MinGRULayer(1, 1);
-    layer.randomize(-1000, 1000);
+    layer.randomize(0, 1000);
     defer ~layer;
 
-    rai::RMSProp optimizer = rai::RMSProp(layer.parameters(), 0.03, 0.95, 0.1);
+    // Good start for finding SGD lRate is 0.00001
+    // rai::SGD optimizer = rai::SGD(layer.parameters(), 0.00001);
+    // defer ~optimizer;
+
+    // Good start for finding RMSProp lRate is 0.001
+    rai::RMSProp optimizer = rai::RMSProp(layer.parameters(), 0.001, 0.9f, 0.000000001f);
     defer ~optimizer;
 
     // Training
-    for(int epoch=0; epoch<10; epoch++) {
+    for(int epoch=0; epoch<1000; epoch++) {
         float total = 0f;
 
         for(int sample=0; sample<input.length; sample++) {
-            for(int i = 0; i < layer.outSize; i++) {
-                layer.h_prev[i] = 0f;
-            }
+            for(int i = 0; i < layer.outSize; i++) layer.h_prev[i] = 0f;
+
             // Forward
             layer.forward(&input[sample]);
 
@@ -29,12 +34,6 @@ void main {
             total += rai::mseLossGrad(layer.h, &target[sample], layer.grad, layer.outSize);
             layer.backward(&input[sample]);
 
-            // for (int i = 0; i < layer.wSize; i++) {
-            //     std::println("layer.wZ[", i, "] (", layer.wZ[i], ") -= 0.03 * layer.dWZ[", i, "] (", layer.dWZ[i], ")");
-            //     layer.wZ[i] -= 0.03 * layer.dWZ[i];
-            //     std::println("layer.wO[", i, "] (", layer.wO[i], ") -= 0.03 * layer.dWO[", i, "] (", layer.dWO[i], ")");
-            //     layer.wO[i] -= 0.03 * layer.dWO[i];
-            // }
             // std::println("FIRST pointer was: ", ptoi(layer.wZ), "; ", ptoi(layer.dWZ));
             // std::println("FIRST pointer was: ", ptoi(layer.wO), "; ", ptoi(layer.dWO));
             optimizer.update();
@@ -52,9 +51,9 @@ void main {
         float number;
         std::input(&number);
 
+        layer.h_prev[0] = 0f;
         layer.forward(&number);
 
-        layer.h_prev[0] = 0f;
         std::println("Answer is ", layer.h[0]);
     }
 }
