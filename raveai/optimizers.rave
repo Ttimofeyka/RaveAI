@@ -1,4 +1,4 @@
-import <std/vector> <std/math>
+import <std/vector> <std/math> <std/io>
 
 namespace rai {
     struct OptPair {
@@ -38,10 +38,11 @@ namespace rai {
 
         void update {
             for(uint i=0; i<pairs.length; i++) {
-                for(uint j=0; j<pairs[i].size; j++) {
-                    float grad = pairs[i].dpointer[j];
-                    caches[i].pointer[j] = decay * caches[i].pointer[j] + (1f - decay) * grad * grad;
-                    pairs[i].pointer[j] -= lRate * grad / (std::math::sqrt(caches[i].pointer[j]) + epsilon);
+                for(uint j=0; j<pairs.data[i].size; j++) {
+                    float grad = pairs.data[i].dpointer[j];
+                    std::println("grad: ", grad);
+                    caches.data[i].pointer[j] = decay * caches.data[i].pointer[j] + (1f - decay) * grad * grad;
+                    pairs.data[i].pointer[j] -= lRate * grad / (std::math::sqrt(caches.data[i].pointer[j]) + epsilon);
                 }
             }
         }
@@ -49,6 +50,35 @@ namespace rai {
         void ~this {
             ~(this.pairs);
             ~(this.caches);
+        }
+    }
+
+    struct SGD {
+        std::vector<rai::OptPair> pairs;
+        float lRate;
+
+        rai::SGD this(std::vector<rai::OptPair> pairs, float lRate) {
+            rai::SGD this;
+
+            this.pairs = pairs;
+            this.lRate = lRate;
+        } => this;
+
+        void update {
+            for(uint i=0; i < pairs.length; i++) {
+                // std::println("pointer was: ", ptoi(pairs.data[i].pointer), "; ", ptoi(pairs.data[i].dpointer));
+                for(uint j=0; j<pairs.data[i].size; j++) {
+                    rai::OptPair op = pairs.data[i];
+                    auto pt = op.pointer;
+                    auto dp = op.dpointer;
+                    std::println("layer.XX[", j, "] (", pt[j], ") -= 0.03 * layer.dXX[", j, "] (", dp[j], ")");
+                    pt[j] = pt[j] - lRate * dp[j];
+                }
+            }
+        }
+
+        void ~this {
+            ~(this.pairs);
         }
     }
 

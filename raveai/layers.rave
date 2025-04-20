@@ -7,6 +7,8 @@ with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import <std/math> <std/random> <std/io> <std/blas>
 import "utils" "optimizers"
 
+extern (linkname: "printf", vararg) void printf(char* fmt);
+
 namespace rai {
     namespace LayerType {
         alias Linear = 0;
@@ -72,11 +74,13 @@ namespace rai {
     }
 
     struct MinGRULayer {
-        int inSize, outSize, wSize;
+        int inSize /* dx */, outSize /* dh */, wSize /* dx * dh */;
 
         float* wZ, dWZ; // in * hidden
         float* wO, dWO; // hidden * in
-        float* h; // Hidden    
+        float* h; // Hidden output
+        float* h_prev; // Previous hidden output
+        float* z, htilde; // Intermediate buffers
 
         float* grad; // Grad
 
@@ -94,45 +98,108 @@ namespace rai {
             this.dWO = std::anew<float>(16, outSize * this.wSize);
 
             this.h = std::anew<float>(16, outSize);
+            this.z = std::anew<float>(16, outSize);
+            this.h_prev = std::anew<float>(16, outSize);
+            this.htilde = std::anew<float>(16, outSize);
             this.grad = std::anew<float>(16, outSize);
 
-            for(int i=0; i < inSize * outSize; i++) {
+            for(int i=0; i < this.wSize; i++) {
                 this.wZ[i] = 0f;
                 this.wO[i] = 0f;
                 this.dWZ[i] = 0f;
                 this.dWO[i] = 0f;
             }
 
-            for(int i=0; i<outSize; i++) {
+            for(int i=0; i < outSize; i++) {
                 this.h[i] = 0f;
+                this.z[i] = 0f;
+                this.h_prev[i] = 0f;
+                this.htilde[i] = 0f;
                 this.grad[i] = 0f;
             }
         } => this;
 
         void parameters(std::vector<rai::OptPair>* buffer) {
-            buffer.add(rai::OptPair{inSize, wZ, dWZ});
-            buffer.add(rai::OptPair{outSize, wO, dWO});
+            buffer.add(rai::OptPair{wSize, wZ, dWZ});
+            buffer.add(rai::OptPair{wSize, wO, dWO});
+            for (int i = 0; i < buffer.length; i++) {
+                auto op = buffer.data[i];
+                std::println("PARAM ", op.size, " ", ptoi(op.pointer), " ", ptoi(op.dpointer));
+            }
         }
 
         std::vector<rai::OptPair> parameters {return = std::vector<rai::OptPair>(); parameters(&return);}
 
         void randomize(int min, int max) {
-            for(int i=0; i < inSize * outSize; i++) {
-                wZ[i] = (std::randomInt(min, max) / 1000f);
-                wO[i] = (std::randomInt(min, max) / 1000f);
+            for(int i=0; i < wSize; i++) {
+                wZ[i] = 0f; // (std::randomInt(min, max) / 1000f);
+                wO[i] = 0f; // (std::randomInt(min, max) / 1000f);
             }
         }
 
-        void forward(float* input, float* hOut) {
-            
+        void forward(float* input) {
+            // printf("=== FORWARD ===\n");
+            for(int j = 0; j < outSize; j++) {
+                /* compute z[j] = sigmoid( Wz[j] · x ) */
+                float az = 0f;
+                for(int i = 0; i < inSize; i++) {
+                    az += wZ[j*inSize + i] * input[i];
+                }
+                // std::println("az: ", az);
+                z[j] = std::math::sigmoid(az);
+
+                /* compute htilde[j] = Wh[j] · x */
+                float ah = 0f;
+                for(int i = 0; i < inSize; i++) {
+                    ah += wO[j*inSize + i] * input[i];
+                }
+                // std::println("ah: ", ah);
+                htilde[j] = ah;
+
+                /* hidden update: h = (1 - z) * h_prev + z * htilde */
+                h[j] = (1.0 - z[j]) * h_prev[j] + z[j] * htilde[j];
+            }
+            // printf("=== FORWARD END ===\n");
         }
 
-        void backward(float* predicted, float* hPrev) {
-            
+        void backward(float* predicted) {
+            // printf("=== BACKWARD ===\n");
+            for(int j = 0; j < wSize; j++) {
+                dWZ[j] = 0f;
+                dWO[j] = 0f;
+            }
+            for(int j = 0; j < outSize; j++) {
+                float dh_j = grad[j];
+
+                /* gradients wrt htilde and z */
+                float d_htilde = dh_j * z[j];
+                float d_z = dh_j * (htilde[j] - h_prev[j]);
+
+                /* gradient through sigmoid */
+                float dz_da = z[j] * (1f - z[j]);
+                float d_az = d_z * dz_da;
+
+                /* accumulate gradients into weight matrices */
+                for(int i = 0; i < inSize; i++) {
+                    dWO[j*inSize + i] += d_htilde * predicted[i];
+                    dWZ[j*inSize + i] += d_az     * predicted[i];
+                }
+            }
+            // printf("=== BACKWARD END ===\n");
         }
 
         void ~this {
-            
+            if(this.wZ == null) @return();
+            std::free(this.wZ);
+            std::free(this.wO);
+            std::free(this.dWZ);
+            std::free(this.dWO);
+            std::free(this.h);
+            std::free(this.z);
+            std::free(this.h_prev);
+            std::free(this.htilde);
+            std::free(this.grad);
+            this.wZ = null;
         }
     }
 
@@ -157,7 +224,7 @@ namespace rai {
             this.input = input;
 
             for(int i=0; i<size; i++) {
-                switch(type) {
+                switch(type) { // TODO: optimize & benchmark
                     case(rai::ActivationType::ReLU) output[i] = std::math::relu(input[i]);
                     case(rai::ActivationType::Sigmoid) output[i] = std::math::sigmoid(input[i]);
                     case(rai::ActivationType::Tanh) output[i] = std::math::tanh(input[i]);
@@ -168,7 +235,7 @@ namespace rai {
 
         void backward(float* predicted) {
             for(int i=0; i<size; i++) {
-                switch(type) {
+                switch(type) { // TODO: optimize & benchmark
                     case(rai::ActivationType::ReLU) grad[i] = predicted[i] * std::math::drelu(output[i]);
                     case(rai::ActivationType::Sigmoid) grad[i] = predicted[i] * std::math::dsigmoid(output[i]);
                     case(rai::ActivationType::Tanh) {
