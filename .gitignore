@@ -3,6 +3,7 @@ examples/actlinear/actlinear
 examples/droplinear/droplinear
 examples/numberlinear/numberlinear
 examples/mingru/mingru
+examples/chargru/chargru
 *.ll
 *.o
 *.c

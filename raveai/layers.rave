@@ -271,7 +271,7 @@ namespace rai {
         void forward(float* input, bool isTraining) {
             for(int i=0; i<size; i++) {
                 if(isTraining) {
-                    if((std::randomInt(0, 100) / 100f) <= prob) output[i] = 0f;
+                    if((std::randomInt(0, 100) / 100f) <= prob) output[i] = input[i] * 0.1f;
                     else output[i] = input[i];
                 }
                 else {

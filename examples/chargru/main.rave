@@ -1,0 +1,85 @@
+import <std/io> <std/vector>
+import "../../raveai/layers" "../../raveai/optimizers"
+
+void charToLogits(float* ptr, char c) {
+    for(uint i=0; i<10; i++) {
+        if((cast(int)(c - '0')) != i) ptr[i] = 0f;
+        else ptr[i] = 1f;
+    }
+}
+
+std::vector<float> charToLogits(char c) {
+    return = std::vector<float>();
+
+    for(char i='0'; i<='9'; i++) {
+        if(c != i) return.add(0f);
+        else return.add(1f);
+    }
+}
+
+void main {
+    char* text = "0123456789";
+    uint textLength = std::cstring::strlen(text);
+
+    std::vector<std::vector<float>> input = std::vector<std::vector<float>>();
+    std::vector<std::vector<float>> target = std::vector<std::vector<float>>();
+
+    for(uint i=0; i<(textLength - 1); i++) {
+        input.add(charToLogits(text[i]));
+        target.add(charToLogits(text[i + 1]));
+    }
+
+    rai::MinGRULayer layer = rai::MinGRULayer(10, 10);
+    layer.randomize(0, 1000);
+    defer ~layer;
+
+    // Good start for finding SGD lRate is 0.00001
+    // rai::SGD optimizer = rai::SGD(layer.parameters(), 0.00001);
+    // defer ~optimizer;
+
+    // Good start for finding RMSProp lRate is 0.001
+    rai::RMSProp optimizer = rai::RMSProp(layer.parameters(), 0.001, 0.9f, 0.000000001f);
+    defer ~optimizer;
+
+    // Training
+    for(int epoch=0; epoch<100; epoch++) {
+        float total = 0f;
+
+        for(int sample=0; sample<input.length; sample++) {
+            for(int i = 0; i<layer.outSize; i++) layer.h_prev[i] = 0f;
+
+            // Forward
+            layer.forward(input.data[sample].data);
+
+            // Backward
+            total += rai::mseLossGrad(layer.h, target.data[sample].data, layer.grad, layer.outSize);
+            layer.backward(input.data[sample].data);
+
+            optimizer.update();
+        }
+
+        std::println("Epoch ", epoch, ", loss: ", total);
+    }
+
+    std::println("Done!");
+
+    // Inferencing
+    while(true) {
+        std::print("Enter the number: ");
+
+        char number;
+        std::input(&number);
+
+        for(int i=0; i<layer.outSize; i++) layer.h_prev[i] = 0f;
+
+        // Segfault after this line
+        std::vector<float> logits = charToLogits(number);
+
+        layer.forward(logits.data);
+
+        std::println("Predicted:");
+        for(uint i=0; i<10; i++) {
+            std::println("\n", i, " : ", layer.h[i]);
+        }
+    }
+}
