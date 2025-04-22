@@ -38,7 +38,7 @@ void main {
     // defer ~optimizer;
 
     // Good start for finding RMSProp lRate is 0.001
-    rai::RMSProp optimizer = rai::RMSProp(layer.parameters(), 0.001, 0.9f, 0.000000001f);
+    rai::RMSProp optimizer = rai::RMSProp(layer.parameters(), 0.01, 0.9f, 0.000000001f);
     defer ~optimizer;
 
     // Training
@@ -46,7 +46,7 @@ void main {
         float total = 0f;
 
         for(int sample=0; sample<input.length; sample++) {
-            for(int i = 0; i<layer.outSize; i++) layer.h_prev[i] = 0f;
+            for(int i=0; i<layer.outSize; i++) layer.h_prev[i] = 0f;
 
             // Forward
             layer.forward(input.data[sample].data);
@@ -72,14 +72,19 @@ void main {
 
         for(int i=0; i<layer.outSize; i++) layer.h_prev[i] = 0f;
 
-        // Segfault after this line
         std::vector<float> logits = charToLogits(number);
+        defer ~logits;
 
         layer.forward(logits.data);
 
-        std::println("Predicted:");
-        for(uint i=0; i<10; i++) {
-            std::println("\n", i, " : ", layer.h[i]);
+        std::print("Next predicted number: ");
+
+        uint maxPredicted = 0;
+
+        for(uint i=0; i<logits.length; i++) {
+            if(logits[i] > logits[maxPredicted]) maxPredicted = i;
         }
+
+        std::println(maxPredicted + 1);
     }
 }

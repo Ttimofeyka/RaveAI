@@ -171,8 +171,8 @@ namespace rai {
                 float d_htilde = dh_j * z[j];
                 float d_z = dh_j * (htilde[j] - h_prev[j]);
 
-                /* gradient through sigmoid */
-                float dz_da = z[j] * (1f - z[j]);
+                /* gradient through derivative sigmoid */
+                float dz_da = std::math::dsigmoid(z[j]);
                 float d_az = d_z * dz_da;
 
                 /* accumulate gradients into weight matrices */
