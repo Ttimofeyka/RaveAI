@@ -1,2 +1,2 @@
 #!/bin/sh
-rave ./examples/chargru/main.rave -o ./examples/chargru/chargru -Ofast -lm
+rave ./examples/llmgru/main.rave -o ./examples/llmgru/llmgru -Ofast -lm

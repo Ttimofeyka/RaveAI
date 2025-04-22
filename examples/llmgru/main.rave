@@ -1,0 +1,85 @@
+import <std/io> <std/vector>
+import "../../raveai/layers" "../../raveai/optimizers" "logits"
+
+void main {
+    char* text = "Michael is a good guy.";
+    uint textLength = std::cstring::strlen(text);
+
+    std::vector<float*> input = std::vector<float*>();
+    std::vector<float*> target = std::vector<float*>();
+
+    // Context size = 2
+
+    for(uint i=0; (i + 3) < textLength; i++) {
+        float* inExample = std::anew<float>(16, vocabSize * 2);
+        float* outExample = std::anew<float>(16, vocabSize);
+        fdefer std::free(inExample);
+        fdefer std::free(outExample);
+
+        charToLogits(inExample, text[i]);
+        charToLogits(&inExample[127], text[i + 1]);
+
+        charToLogits(outExample, text[i + 2]);
+
+        input.add(inExample);
+        target.add(outExample);
+    }
+
+    rai::MinGRULayer layer = rai::MinGRULayer(vocabSize * 2, vocabSize);
+    layer.randomize(0, 1000);
+    defer ~layer;
+
+    // Good start for finding SGD lRate is 0.00001
+    // rai::SGD optimizer = rai::SGD(layer.parameters(), 0.00001);
+    // defer ~optimizer;
+
+    // Good start for finding RMSProp lRate is 0.001
+    rai::RMSProp optimizer = rai::RMSProp(layer.parameters(), 0.001, 0.9f, 0.000000001f);
+    defer ~optimizer;
+
+    // Training
+    for(int epoch=0; epoch<250; epoch++) {
+        float total = 0f;
+
+        for(int sample=0; sample<input.length; sample++) {
+            for(int i=0; i<layer.outSize; i++) layer.h_prev[i] = 0f;
+
+            // Forward
+            layer.forward(input.data[sample]);
+
+            // Backward
+            total += rai::mseLossGrad(layer.h, target.data[sample], layer.grad, layer.outSize);
+            layer.backward(input.data[sample]);
+
+            optimizer.update();
+        }
+
+        std::println("Epoch ", epoch, ", loss: ", total);
+    }
+
+    std::println("Done!");
+
+    for(int i=0; i<layer.outSize; i++) layer.h_prev[i] = 0f;
+
+    float* _logits = std::anew<float>(16, vocabSize * 2);
+
+    while(true) {
+        std::print("Enter two characters (space is _): ");
+
+        char character1;
+        std::input(&character1);
+
+        char character2;
+        std::input(&character2);
+
+        if(character1 == '_') character1 = '_';
+        if(character2 == '_') character2 = '_';
+
+        charToLogits(_logits, character1);
+        charToLogits(&_logits[127], character2);
+
+        layer.forward(_logits);
+
+        std::println("Predicted: '", logitsToChar(layer.h), "'");
+    } 
+}

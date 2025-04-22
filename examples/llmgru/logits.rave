@@ -1,0 +1,20 @@
+import <std/vector>
+
+uint vocabSize = 127;
+
+void charToLogits(float* buffer, char c) {
+    for(char i=0; i<127c; i++) {
+        if(i == c) buffer[cast(uint)i] = 1f;
+        else buffer[cast(uint)i] = 0f;
+    }
+}
+
+char logitsToChar(float* buffer) {
+    uint _max = 0;
+
+    for(uint i=1; i<127; i++) {
+        if(buffer[i] > buffer[_max]) _max = i;
+    }
+
+    return = cast(char)_max;
+}

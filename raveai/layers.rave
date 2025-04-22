@@ -74,14 +74,13 @@ namespace rai {
     }
 
     struct MinGRULayer {
-        int inSize /* dx */, outSize /* dh */, wSize /* dx * dh */;
+        int inSize, outSize, wSize;
 
         float* wZ, dWZ; // in * hidden
         float* wO, dWO; // hidden * in
         float* h; // Hidden output
         float* h_prev; // Previous hidden output
         float* z, htilde; // Intermediate buffers
-
         float* grad; // Grad
 
         rai::MinGRULayer this(int inSize, int outSize) {
@@ -134,56 +133,45 @@ namespace rai {
         }
 
         void forward(float* input) {
-            // printf("=== FORWARD ===\n");
-            for(int j = 0; j < outSize; j++) {
-                /* compute z[j] = sigmoid( Wz[j] · x ) */
+            for(int j=0; j<outSize; j++) {
+                /* Compute z[j] = sigmoid( wZ[j] · x ) */
                 float az = 0f;
                 for(int i = 0; i < inSize; i++) az += wZ[j * inSize + i] * input[i];
-                // std::println("az: ", az);
                 z[j] = std::math::sigmoid(az);
 
-                /* compute htilde[j] = Wh[j] · x */
+                /* Compute htilde[j] = wO[j] · x */
                 float ah = 0f;
                 for(int i = 0; i < inSize; i++) ah += wO[j * inSize + i] * input[i];
-                // std::println("ah: ", ah);
                 htilde[j] = ah;
 
-                /* hidden update: h = (1 - z) * h_prev + z * htilde */
-                // std::println("h[", h, "] = (1 - ", z[j], ") * ", h_prev[j], " + ", z[j], " * ", htilde[j]);
+                /* Hidden update: h = (1 - z) * h_prev + z * htilde */
                 h[j] = (1.0 - z[j]) * h_prev[j] + z[j] * htilde[j];
             }
-            // printf("=== FORWARD END ===\n");
         }
 
         void backward(float* predicted) {
-            // printf("=== BACKWARD ===\n");
-            for(int j = 0; j < wSize; j++) {
+            for(int j=0; j<wSize; j++) {
                 dWZ[j] = 0f;
                 dWO[j] = 0f;
             }
 
-            for(int j = 0; j < outSize; j++) {
+            for(int j=0; j<outSize; j++) {
                 float dh_j = grad[j];
 
-                /* gradients wrt htilde and z */
-                // std::println("d_htilde = ", dh_j, " * ", z[j]);
-                // std::println("d_z = ", dh_j, " * (", htilde[j], " - ", h_prev[j], ")");
+                /* Gradients wrt htilde and z */
                 float d_htilde = dh_j * z[j];
                 float d_z = dh_j * (htilde[j] - h_prev[j]);
 
-                /* gradient through derivative sigmoid */
+                /* Gradient through derivative sigmoid */
                 float dz_da = std::math::dsigmoid(z[j]);
                 float d_az = d_z * dz_da;
 
-                /* accumulate gradients into weight matrices */
-                for(int i = 0; i < inSize; i++) {
-                    // std::println("dWO[", j * inSize + i, "] += ", d_htilde, " * ", predicted[i]);
-                    // std::println("dWZ[", j * inSize + i, "] += ", d_az, " * ", predicted[i]);
+                /* Accumulate gradients into weight matrices */
+                for(int i=0; i<inSize; i++) {
                     dWO[j * inSize + i] += d_htilde * predicted[i];
                     dWZ[j * inSize + i] += d_az * predicted[i];
                 }
             }
-            // printf("=== BACKWARD END ===\n");
         }
 
         void ~this {
@@ -202,13 +190,13 @@ namespace rai {
     }
 
     struct ActivationLayer {
-        int size;
+        uint size;
         float* input;
         float* output;
         float* grad;
         int type;
 
-        rai::ActivationLayer this(int size, int type) {
+        rai::ActivationLayer this(uint size, int type) {
             rai::ActivationLayer this;
 
             this.size = size;
@@ -221,7 +209,7 @@ namespace rai {
         void forward(float* input) {
             this.input = input;
 
-            for(int i=0; i<size; i++) {
+            for(uint i=0; i<size; i++) {
                 switch(type) { // TODO: optimize & benchmark
                     case(rai::ActivationType::ReLU) output[i] = std::math::relu(input[i]);
                     case(rai::ActivationType::Sigmoid) output[i] = std::math::sigmoid(input[i]);
@@ -232,7 +220,7 @@ namespace rai {
         }
 
         void backward(float* predicted) {
-            for(int i=0; i<size; i++) {
+            for(uint i=0; i<size; i++) {
                 switch(type) { // TODO: optimize & benchmark
                     case(rai::ActivationType::ReLU) grad[i] = predicted[i] * std::math::drelu(output[i]);
                     case(rai::ActivationType::Sigmoid) grad[i] = predicted[i] * std::math::dsigmoid(output[i]);

@@ -65,12 +65,10 @@ namespace rai {
 
         void update {
             for(uint i=0; i < pairs.length; i++) {
-                // std::println("pointer was: ", ptoi(pairs.data[i].pointer), "; ", ptoi(pairs.data[i].dpointer));
                 for(uint j=0; j<pairs.data[i].size; j++) {
                     rai::OptPair op = pairs.data[i];
                     auto pt = op.pointer;
                     auto dp = op.dpointer;
-                    // std::println("layer.XX[", j, "] (", pt[j], ") -= 0.03 * layer.dXX[", j, "] (", dp[j], ")");
                     pt[j] = pt[j] - lRate * dp[j];
                 }
             }
@@ -80,11 +78,4 @@ namespace rai {
             ~(this.pairs);
         }
     }
-
-    /*for(int i = 0; i < gru->hidden_size * gru->input_size; i++) {
-        opt->W_z_cache[i] = opt->decay_rate * opt->W_z_cache[i] 
-                          + (1 - opt->decay_rate) * gru->dW_z[i] * gru->dW_z[i];
-        gru->W_z[i] -= opt->learning_rate * gru->dW_z[i] 
-                     / (sqrtf(opt->W_z_cache[i]) + opt->epsilon);
-    }*/
 }
