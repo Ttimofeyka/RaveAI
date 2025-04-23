@@ -4,6 +4,7 @@ examples/droplinear/droplinear
 examples/numberlinear/numberlinear
 examples/mingru/mingru
 examples/chargru/chargru
+examples/llmgru/llmgru
 *.ll
 *.o
 *.c

@@ -7,7 +7,6 @@ with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import <std/math> <std/random> <std/io> <std/blas>
 import "utils" "optimizers"
 
-extern (linkname: "printf", vararg) void printf(char* fmt);
 
 namespace rai {
     namespace LayerType {
@@ -15,12 +14,15 @@ namespace rai {
         alias Activation = 1;
         alias Dropout = 2;
         alias MinGRU = 3;
+        alias FeedForward = 4;
+        alias RMSNorm = 5;
     }
 
     namespace ActivationType {
         alias ReLU = 0;
         alias Sigmoid = 1;
         alias Tanh = 2;
+        alias GELU = 3;
     }
 
     struct LinearLayer {
@@ -70,6 +72,82 @@ namespace rai {
             this.output = null;
             this.weights = null;
             this.grad = null;
+        }
+    }
+
+    struct RMSNormLayer {
+        float* output;
+        float epsilon;
+        uint size;
+
+        rai::RMSNormLayer this(uint size, float epsilon) {
+            rai::RMSNormLayer this;
+
+            this.epsilon = epsilon;
+            this.size = size;
+            this.output = std::anew<float>(16, size);
+        } => this;
+
+        void forward(float* input) {
+            float sum_sq = 0f;
+
+            for(uint i=0; i<size; i++) sum_sq += input[i] * input[i];
+
+            float rms = std::math::sqrt((sum_sq / cast(float)size) + epsilon);
+            float scale_factor = 1f / rms;
+
+            for(uint i=0; i<size; i++) output[i] = input[i] * scale_factor;
+        }
+
+        // Does not need a backward.
+    }
+
+    struct FeedForwardLayer {
+        rai::LinearLayer layer1, layer2;
+        float(float) activation, dactivation;
+        uint inSize, hiddenSize, outSize;
+        float* output;
+
+        rai::FeedForwardLayer this(int activationType, uint inSize, uint hiddenSize, uint outSize) {
+            rai::FeedForwardLayer this;
+
+            this.inSize = inSize;
+            this.hiddenSize = hiddenSize;
+            this.outSize = outSize;
+
+            this.layer1 = rai::LinearLayer(inSize, hiddenSize);
+            this.layer2 = rai::LinearLayer(hiddenSize, outSize);
+
+            switch(activationType) {
+                // TODO: Rework it all
+                case(rai::ActivationType::GELU) {
+                    this.activation = float(float x) => 0.5f * x * (1d + (std::math::tanh(0.7978845608f * (x + (0.044715f * x * x * x)))));
+                    this.dactivation = float(float x) {
+                        double cdf = 0.5 * (1.0 + std::math::tanh(0.7978845608 * (1.0 + 0.044715 * x)));
+                        double pdf = 0.3989422804 * std::math::exp(-0.5 * x * x) / std::math::sqrt(2.0 * 3.1415926536);
+                        return = cdf + (x * pdf);
+                    };
+                }
+                default this.activation = null;
+            }
+        } => this;
+
+        void randomize(int min, int max) {
+            layer1.randomize(min, max);
+            layer2.randomize(min, max);
+        }
+
+        void forward(float* input) {
+            layer1.forward(input);
+            for(uint i=0; i<layer1.outSize; i++) layer1.output[i] = activation(layer1.output[i]);
+            layer2.forward(layer1.output);
+            this.output = layer2.output;
+        }
+
+        void backward(float* target, float lRate) {
+            layer2.backward(target, lRate);
+            for(uint i=0; i<layer1.outSize; i++) layer2.output[i] = dactivation(layer2.output[i]);
+            layer1.backward(layer2.output, lRate);
         }
     }
 
@@ -136,7 +214,7 @@ namespace rai {
             for(int j=0; j<outSize; j++) {
                 /* Compute z[j] = sigmoid( wZ[j] · x ) */
                 float az = 0f;
-                for(int i = 0; i < inSize; i++) az += wZ[j * inSize + i] * input[i];
+                // for(int i = 0; i < inSize; i++) az += wZ[j * inSize + i] * input[i];
                 z[j] = std::math::sigmoid(az);
 
                 /* Compute htilde[j] = wO[j] · x */
@@ -167,10 +245,8 @@ namespace rai {
                 float d_az = d_z * dz_da;
 
                 /* Accumulate gradients into weight matrices */
-                for(int i=0; i<inSize; i++) {
-                    dWO[j * inSize + i] += d_htilde * predicted[i];
-                    dWZ[j * inSize + i] += d_az * predicted[i];
-                }
+                std::blas::axpy<float>(inSize, d_htilde, predicted, &dWO[j * inSize]);
+                std::blas::axpy<float>(inSize, d_az, predicted, &dWZ[j * inSize]);
             }
         }
 

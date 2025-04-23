@@ -1,31 +1,43 @@
 import <std/io> <std/vector>
 import "../../raveai/layers" "../../raveai/optimizers" "logits"
 
-void main {
-    char* text = "Michael is a good guy.";
-    uint textLength = std::cstring::strlen(text);
+// MUST BE RUNNED FROM THE MAIN DIRECTORY!
 
-    std::vector<float*> input = std::vector<float*>();
+uint contextSize = 16;
+
+void main {
+    std::file sh = std::file("shakespeare.txt");
+    sh.open("r");
+        std::string dataset = sh.readAll();
+    sh.close();
+
+    std::vector<std::vector<float*>> input = std::vector<std::vector<float*>>();
     std::vector<float*> target = std::vector<float*>();
 
-    // Context size = 2
+    for(uint i=0; i < (dataset.length - contextSize); i++) {
+        std::vector<float*> sequence = std::vector<float*>();
+        fdefer ~sequence;
 
-    for(uint i=0; (i + 3) < textLength; i++) {
-        float* inExample = std::anew<float>(16, vocabSize * 2);
-        float* outExample = std::anew<float>(16, vocabSize);
-        fdefer std::free(inExample);
-        fdefer std::free(outExample);
+        for(uint j=0; j<contextSize; j++) {
+            float* newLogits = std::anew<float>(16, vocabSize);
+            fdefer std::free(newLogits);
 
-        charToLogits(inExample, text[i]);
-        charToLogits(&inExample[127], text[i + 1]);
+            charToLogits(newLogits, dataset.data[i + j]);
+            sequence.add(newLogits);
+        }
 
-        charToLogits(outExample, text[i + 2]);
+        input.add(sequence);
+        
+        float* newLogits = std::anew<float>(16, vocabSize);
+        fdefer std::free(newLogits);
 
-        input.add(inExample);
-        target.add(outExample);
+        charToLogits(newLogits, dataset.data[i + contextSize]);
+        target.add(newLogits);
+
+        if(i % 10000 == 0) std::println("Tokenization step: ", i, " / ", dataset.length - contextSize);
     }
 
-    rai::MinGRULayer layer = rai::MinGRULayer(vocabSize * 2, vocabSize);
+    rai::MinGRULayer layer = rai::MinGRULayer(vocabSize, vocabSize);
     layer.randomize(0, 1000);
     defer ~layer;
 
@@ -34,52 +46,33 @@ void main {
     // defer ~optimizer;
 
     // Good start for finding RMSProp lRate is 0.001
-    rai::RMSProp optimizer = rai::RMSProp(layer.parameters(), 0.001, 0.9f, 0.000000001f);
+    rai::RMSProp optimizer = rai::RMSProp(layer.parameters(), 0.01, 0.9f, 0.000000001f);
     defer ~optimizer;
 
     // Training
-    for(int epoch=0; epoch<250; epoch++) {
+    for(int epoch=0; epoch<10; epoch++) {
         float total = 0f;
 
         for(int sample=0; sample<input.length; sample++) {
             for(int i=0; i<layer.outSize; i++) layer.h_prev[i] = 0f;
 
+            std::vector<float*> currSample = input.data[sample];
+
             // Forward
-            layer.forward(input.data[sample]);
+            for(uint i=0; i<currSample.length; i++) layer.forward(currSample.data[i]);
 
             // Backward
             total += rai::mseLossGrad(layer.h, target.data[sample], layer.grad, layer.outSize);
-            layer.backward(input.data[sample]);
+
+            layer.backward(target.data[sample]);
 
             optimizer.update();
+
+            if(sample % 500 == 0) std::println("Step ", sample, " / ", input.length);
         }
 
         std::println("Epoch ", epoch, ", loss: ", total);
     }
 
     std::println("Done!");
-
-    for(int i=0; i<layer.outSize; i++) layer.h_prev[i] = 0f;
-
-    float* _logits = std::anew<float>(16, vocabSize * 2);
-
-    while(true) {
-        std::print("Enter two characters (space is _): ");
-
-        char character1;
-        std::input(&character1);
-
-        char character2;
-        std::input(&character2);
-
-        if(character1 == '_') character1 = '_';
-        if(character2 == '_') character2 = '_';
-
-        charToLogits(_logits, character1);
-        charToLogits(&_logits[127], character2);
-
-        layer.forward(_logits);
-
-        std::println("Predicted: '", logitsToChar(layer.h), "'");
-    } 
 }

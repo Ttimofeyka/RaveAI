@@ -1,4 +1,4 @@
-import <std/vector>
+import <std/vector> <std/io>
 
 uint vocabSize = 127;
 
